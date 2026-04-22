@@ -9,6 +9,9 @@ type GenerateBody = {
   n?: number;
   quality?: string;
   background?: string;
+  output_format?: string;
+  output_compression?: number;
+  moderation?: string;
 };
 
 export async function POST(req: Request) {
@@ -18,7 +21,7 @@ export async function POST(req: Request) {
 
   if (!apiUrl || !apiKey) {
     return NextResponse.json(
-      { error: "Server missing IMAGE_API_URL or IMAGE_API_KEY" },
+      { error: "服务器未配置 IMAGE_API_URL 或 IMAGE_API_KEY" },
       { status: 500 },
     );
   }
@@ -27,12 +30,12 @@ export async function POST(req: Request) {
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    return NextResponse.json({ error: "请求体不是合法的 JSON" }, { status: 400 });
   }
 
   const prompt = body.prompt?.trim();
   if (!prompt) {
-    return NextResponse.json({ error: "Prompt is required" }, { status: 400 });
+    return NextResponse.json({ error: "提示词不能为空" }, { status: 400 });
   }
 
   const endpoint = apiUrl.replace(/\/+$/, "") + "/images/generations";
@@ -45,6 +48,11 @@ export async function POST(req: Request) {
   };
   if (body.quality) payload.quality = body.quality;
   if (body.background) payload.background = body.background;
+  if (body.output_format) payload.output_format = body.output_format;
+  if (typeof body.output_compression === "number") {
+    payload.output_compression = body.output_compression;
+  }
+  if (body.moderation) payload.moderation = body.moderation;
 
   let upstream: Response;
   try {
@@ -58,7 +66,7 @@ export async function POST(req: Request) {
     });
   } catch (err) {
     return NextResponse.json(
-      { error: `Upstream request failed: ${(err as Error).message}` },
+      { error: `上游请求失败：${(err as Error).message}` },
       { status: 502 },
     );
   }
@@ -69,22 +77,34 @@ export async function POST(req: Request) {
     data = JSON.parse(text);
   } catch {
     return NextResponse.json(
-      { error: `Upstream returned non-JSON (${upstream.status})`, raw: text.slice(0, 500) },
+      {
+        error: `上游返回了非 JSON 响应（HTTP ${upstream.status}）`,
+        raw: text.slice(0, 500),
+      },
       { status: 502 },
     );
   }
 
   if (!upstream.ok) {
     return NextResponse.json(
-      { error: "Upstream error", status: upstream.status, details: data },
+      { error: "上游接口报错", status: upstream.status, details: data },
       { status: upstream.status },
     );
   }
 
-  const rawItems = (data as { data?: Array<{ url?: string; b64_json?: string }> }).data ?? [];
+  const format = (body.output_format ?? "png").toLowerCase();
+  const mime =
+    format === "jpeg" || format === "jpg"
+      ? "image/jpeg"
+      : format === "webp"
+        ? "image/webp"
+        : "image/png";
+
+  const rawItems =
+    (data as { data?: Array<{ url?: string; b64_json?: string }> }).data ?? [];
   const images = rawItems
     .map((item) => {
-      if (item.b64_json) return `data:image/png;base64,${item.b64_json}`;
+      if (item.b64_json) return `data:${mime};base64,${item.b64_json}`;
       if (item.url) return item.url;
       return null;
     })
@@ -92,10 +112,10 @@ export async function POST(req: Request) {
 
   if (images.length === 0) {
     return NextResponse.json(
-      { error: "Upstream returned no images", details: data },
+      { error: "上游未返回任何图片", details: data },
       { status: 502 },
     );
   }
 
-  return NextResponse.json({ images });
+  return NextResponse.json({ images, format });
 }

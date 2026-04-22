@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "gpt-image-2 Generator",
-  description: "Generate images with gpt-image-2 on Vercel",
+  title: "gpt-image-2 图像生成器",
+  description: "基于 gpt-image-2 的 AI 图像生成，部署于 Vercel。",
 };
 
 export default function RootLayout({
@@ -12,7 +12,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="zh-CN">
       <body>{children}</body>
     </html>
   );
