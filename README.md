@@ -4,6 +4,13 @@ A minimal Next.js app that generates images via a gpt-image-2-compatible API.
 The model endpoint and key are read from Vercel environment variables — no
 secrets ever reach the browser.
 
+## One-click deploy
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fijk0%2Fgptimage2&env=IMAGE_API_URL,IMAGE_API_KEY&envDescription=Base%20URL%20and%20bearer%20key%20for%20your%20gpt-image-2%20API&project-name=gptimage2&repository-name=gptimage2)
+
+Click the button, sign in to Vercel, and you'll be prompted for
+`IMAGE_API_URL` and `IMAGE_API_KEY` before the first build.
+
 ## Environment variables
 
 Set these in **Vercel → Project Settings → Environment Variables** (and in a
