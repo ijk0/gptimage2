@@ -1,0 +1,22 @@
+# Devenv
+.devenv*
+devenv.local.nix
+devenv.local.yaml
+
+# direnv
+.direnv
+
+# pre-commit
+.pre-commit-config.yaml
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+.vercel
+*.tsbuildinfo
+
+# Env
+.env
+.env.local
+.env.*.local
