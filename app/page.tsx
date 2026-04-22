@@ -295,9 +295,6 @@ export default function Home() {
         </section>
       </div>
 
-      <footer className="footer">
-        模型接口与密钥通过 Vercel 环境变量配置 · 不会暴露到浏览器
-      </footer>
     </main>
   );
 }
