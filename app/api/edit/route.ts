@@ -6,6 +6,36 @@ export const maxDuration = 300;
 
 const MAX_IMAGE_BYTES = 25 * 1024 * 1024;
 
+// Wrap a user-supplied natural-language edit instruction into the
+// Change/Preserve/Constraints structure from the OpenAI cookbook. The model
+// treats everything as fair game unless told otherwise, so an explicit
+// Preserve block on every edit call is the difference between a clean targeted
+// change and unwanted drift across the rest of the image.
+//
+// The user's text is placed inside a <user_change>…</user_change> tag so that
+// any Chinese prose they write (which could plausibly contain "保留不变" or
+// "禁止项" themselves) can't be mistaken by the model for a new structural
+// section that overrides the wrapper. Any literal closing tag in the user
+// input is neutralized.
+//
+// Callers that already compose a structured prompt (e.g. the face-refine
+// pipeline in app/page.tsx) can bypass the wrapper by sending raw=1. Note
+// that `raw=1` is a convenience flag, not a security boundary — the edit
+// endpoint forwards whatever prompt it gets, so there is no secret to
+// protect here.
+function wrapEditInstruction(raw: string): string {
+  const sanitized = raw.replace(/<\/?user_change>/gi, "");
+  return [
+    "你将对一张已有图片进行定向编辑。下列条款用 XML 样式标签分段，",
+    "<user_change> 内为用户的改动意图；其余段为强制执行的边界条款。",
+    `<user_change>${sanitized}</user_change>`,
+    "保留不变：画面其余一切元素严格保持不动 —— 构图、取景、所有人物的身份与五官、姿态与表情、服装、光线方向与色温、背景、色调、颗粒与边框。",
+    "文字约束：若原图包含文字，保持字形与位置不变；除非 <user_change> 明确要求，否则不新增任何文字、水印或贴纸。",
+    "禁止项：不新增多余人物或肢体；不重新构图；不进行风格迁移；不做整体调色，除非 <user_change> 明确提出。",
+    "冲突仲裁：若 <user_change> 与保留条款冲突，以 <user_change> 为准，但冲突范围仅限其显式提及的元素。",
+  ].join("\n");
+}
+
 export async function POST(req: Request) {
   try {
     return await handlePost(req);
@@ -38,10 +68,14 @@ async function handlePost(req: Request) {
     );
   }
 
-  const prompt = String(form.get("prompt") ?? "").trim();
-  if (!prompt) {
+  const rawPrompt = String(form.get("prompt") ?? "").trim();
+  if (!rawPrompt) {
     return NextResponse.json({ error: "编辑指令不能为空" }, { status: 400 });
   }
+  // Callers that already hand-built a structured prompt (e.g. the face-refine
+  // pipeline) pass raw=1 to skip the wrapper.
+  const bypass = String(form.get("raw") ?? "") === "1";
+  const prompt = bypass ? rawPrompt : wrapEditInstruction(rawPrompt);
 
   const image = form.get("image");
   if (!(image instanceof File) || image.size === 0) {

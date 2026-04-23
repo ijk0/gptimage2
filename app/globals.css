@@ -640,11 +640,22 @@ a {
 
 .param-inline {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
   gap: 10px;
   padding: 10px 16px;
   border-right: 1px solid var(--rule);
   min-width: 0;
+}
+
+.param-hint {
+  flex-basis: 100%;
+  margin-top: 2px;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--ink-muted);
+  letter-spacing: 0.2px;
 }
 
 .param-inline:last-child {
@@ -700,6 +711,19 @@ a {
   background: var(--paper);
   color: var(--ink);
   font-family: var(--font-sans);
+}
+
+/* Inline nudge shown when MUSE auto-tunes size/quality for portrait intents. */
+.hint-note {
+  margin-top: 10px;
+  padding: 8px 12px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--cinnabar) 8%, transparent);
+  border-left: 2px solid var(--cinnabar);
+  letter-spacing: 0.3px;
 }
 
 /* ========== Actions ========== */
@@ -990,6 +1014,7 @@ a {
   display: flex;
   align-items: flex-end;
   justify-content: flex-end;
+  gap: 8px;
   padding: var(--space-sm);
   opacity: 0;
   transition: opacity 0.2s ease;
@@ -1004,7 +1029,8 @@ a {
   opacity: 1;
 }
 
-.plate-download {
+.plate-download,
+.plate-refine {
   padding: 6px 12px;
   background: var(--paper);
   color: var(--ink);
@@ -1014,15 +1040,291 @@ a {
   text-transform: uppercase;
   text-decoration: none;
   border: 1px solid var(--ink);
+  cursor: pointer;
   transition:
     background 0.15s ease,
     color 0.15s ease;
 }
 
-.plate-download:hover {
+.plate-refine:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.plate-download:hover,
+.plate-refine:not(:disabled):hover {
   background: var(--cinnabar);
   color: var(--cinnabar-ink);
   border-color: var(--cinnabar);
+}
+
+/* ========== Text Overlay Modal ========== */
+
+.overlay-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-md);
+  background: color-mix(in oklch, black 55%, transparent);
+  backdrop-filter: blur(4px);
+  animation: overlay-fade-in 0.18s ease-out;
+}
+
+@keyframes overlay-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.overlay-panel {
+  width: min(960px, 100%);
+  max-height: calc(100vh - 2 * var(--space-md));
+  display: flex;
+  flex-direction: column;
+  background: var(--paper);
+  border: 1px solid var(--ink);
+  box-shadow: 0 10px 40px color-mix(in oklch, black 30%, transparent);
+  overflow: hidden;
+}
+
+.overlay-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px var(--space-md);
+  border-bottom: 1px solid var(--rule);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+}
+
+.overlay-title {
+  color: var(--ink);
+}
+
+.overlay-close {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--ink);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: border-color 0.15s ease;
+}
+
+.overlay-close:hover {
+  border-color: var(--ink);
+}
+
+.overlay-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(280px, 1fr);
+  gap: var(--space-md);
+  padding: var(--space-md);
+  overflow: auto;
+}
+
+@media (max-width: 720px) {
+  .overlay-body {
+    grid-template-columns: 1fr;
+  }
+}
+
+.overlay-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 240px;
+  background: color-mix(in oklch, var(--ink) 5%, transparent);
+  border: 1px solid var(--rule);
+}
+
+.overlay-preview canvas {
+  max-width: 100%;
+  max-height: 60vh;
+  height: auto;
+  display: block;
+}
+
+.overlay-error {
+  padding: var(--space-md);
+  color: var(--cinnabar);
+  font-family: var(--font-sans);
+  font-size: 13px;
+}
+
+.overlay-controls {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+}
+
+.overlay-field {
+  display: grid;
+  gap: 6px;
+}
+
+.overlay-input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--rule);
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 14px;
+}
+
+.overlay-input:focus {
+  outline: 1px solid var(--cinnabar);
+  outline-offset: -1px;
+}
+
+.overlay-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.overlay-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--rule);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.overlay-chip:hover {
+  border-color: var(--ink);
+}
+
+.overlay-chip.is-active {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+}
+
+.overlay-swatch {
+  width: 12px;
+  height: 12px;
+  border: 1px solid var(--rule);
+  display: inline-block;
+}
+
+.overlay-pos-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 40px);
+  grid-template-rows: repeat(3, 40px);
+  gap: 4px;
+}
+
+.overlay-pos {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--rule);
+  font-size: 16px;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.overlay-pos:hover {
+  border-color: var(--ink);
+}
+
+.overlay-pos.is-active {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+}
+
+.overlay-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 12px var(--space-md);
+  border-top: 1px solid var(--rule);
+}
+
+.overlay-cancel,
+.overlay-apply {
+  padding: 8px 18px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  border: 1px solid var(--ink);
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.overlay-cancel {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.overlay-cancel:hover {
+  background: color-mix(in oklch, var(--ink) 6%, var(--paper));
+}
+
+.overlay-apply {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.overlay-apply:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.overlay-apply:not(:disabled):hover {
+  background: var(--cinnabar);
+  border-color: var(--cinnabar);
+  color: var(--cinnabar-ink);
+}
+
+/* Full-plate scrim rendered while an individual plate is mid-refine. */
+.plate-refining {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: color-mix(in oklch, var(--paper) 78%, transparent);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  z-index: 2;
 }
 
 .plate-caption {

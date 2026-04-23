@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { TextOverlay } from "./_components/TextOverlay";
 
 type Status = "idle" | "loading" | "error";
 type Quota = { limit: number; used: number; remaining: number; grant?: number };
@@ -16,6 +17,12 @@ type PresetItem = {
   label: string;
   text: string;
   size?: string;
+  // Selecting the preset nudges `quality` to this tier when set, otherwise
+  // leaves the user's current pick alone. Reserve "high" for presets where
+  // face or product detail materially changes the accept rate.
+  quality?: string;
+  // Optional style chip to auto-select (must exist in STYLES).
+  style?: string;
   // Presets where the prompt only makes sense with a user-supplied source
   // image (e.g. "restore this old photo", "turn my pet into a gentleman").
   // Selecting one of these auto-routes to edit mode.
@@ -30,31 +37,40 @@ const PRESETS: { group: string; items: PresetItem[] }[] = [
         label: "LinkedIn 证件照",
         text: "职场 LinkedIn 头像，半身证件照，深色西装配白衬衫，中性灰背景，柔和左前侧光，自然轻笑，面部清晰干净",
         size: "1024x1024",
+        quality: "high",
       },
       {
         label: "小红书氛围写真",
         text: "小红书风格人像写真，女孩侧脸倚窗，柔软发丝被风轻拂，奶油色针织衫，淡粉唇色，清晨柔光，胶片颗粒",
         size: "1024x1536",
+        quality: "high",
+        style: "胶片",
       },
       {
         label: "古风汉服人像",
         text: "古风汉服人像，明制竖领斜襟长袄，青绿色绣花披帛，手持团扇立于庭院梅树旁，斜阳落在面颊",
         size: "1024x1536",
+        quality: "high",
+        style: "东方",
       },
       {
         label: "二次元动漫头像",
         text: "把这张照片转成二次元动漫头像，保留人物五官与发型轮廓，蓝紫渐变瞳色，日系插画质感，樱花柔光背景",
         size: "1024x1024",
+        quality: "high",
         needsImage: true,
       },
       {
         label: "情侣双人写真",
         text: "情侣海边写真，并肩坐在礁石上望向海平线，白色亚麻衬衫与米色连衣裙，黄昏暖金光线，胶片质感",
         size: "1536x1024",
+        quality: "high",
+        style: "胶片",
       },
       {
         label: "旧照翻新",
         text: "对这张老照片做数字化修复：去除划痕折痕、提升清晰度、还原自然肤色与衣料纹理，保留原有颗粒与年代感的暖色偏",
+        quality: "high",
         needsImage: true,
       },
     ],
@@ -66,31 +82,41 @@ const PRESETS: { group: string; items: PresetItem[] }[] = [
         label: "白底主图",
         text: "独立站白底产品主图，单件商品居中，纯净亮白背景，无投影或极轻柔阴影，产品边缘清晰锐利，三分之二角度呈现",
         size: "1024x1024",
+        quality: "high",
+        style: "极简",
       },
       {
         label: "生活场景图",
         text: "产品生活场景图，一只陶瓷马克杯置于木质早餐桌上，旁边散落报纸与一枝小雏菊，晨光自窗外斜入",
         size: "1024x1024",
+        quality: "high",
       },
       {
         label: "服装模特上身",
         text: "女装模特上身展示图，米白色针织毛衣搭配高腰牛仔裤，极简灰色墙面背景，正面半身取景，自然站姿",
         size: "1024x1536",
+        quality: "high",
+        style: "时尚",
       },
       {
         label: "美妆精修",
         text: "护肤精华液精修图，一瓶透明玻璃瓶置于水滴飞溅的浅色背景前，光线折射出液体通透感，硬光高光",
         size: "1024x1024",
+        quality: "high",
+        style: "极简",
       },
       {
         label: "食品包装场景",
         text: "食品包装场景图，一盒手工巧克力摆放在纯棉米色桌布上，点缀薄荷叶与可可豆碎片，自然侧光",
         size: "1024x1024",
+        quality: "high",
       },
       {
         label: "3D 产品渲染",
         text: "3D 产品渲染图，一副无线耳机悬浮于淡灰渐变背景前，磨砂金属与哑光塑料材质，柔和工作室光塑造形态",
         size: "1024x1024",
+        quality: "high",
+        style: "极简",
       },
     ],
   },
@@ -136,26 +162,35 @@ const PRESETS: { group: string; items: PresetItem[] }[] = [
         label: "精致摆盘",
         text: "餐厅菜单主图，精致摆盘的意大利面置于深色釉面瓷盘中，撒上帕玛森芝士与现磨黑椒，侧顶光突出质感",
         size: "1024x1024",
+        quality: "high",
+        style: "胶片",
       },
       {
         label: "家常俯拍",
         text: "家常料理俯拍，一桌丰盛晚餐摆满木纹桌面，花盘、筷子、酒杯错落有致，柔和顶光，温馨氛围",
         size: "1024x1024",
+        quality: "high",
+        style: "胶片",
       },
       {
         label: "烘焙特写",
         text: "烘焙甜点特写，一块奶油蛋糕切面近景，草莓与蓝莓点缀，糖粉轻撒其上，45° 侧光带出纹理",
         size: "1024x1536",
+        quality: "high",
+        style: "胶片",
       },
       {
         label: "咖啡饮品",
         text: "手冲咖啡拉花特写，白色陶瓷杯置于水泥台面，蒸汽轻扬，柔和漫射光，浅景深虚化背景",
         size: "1024x1536",
+        quality: "high",
+        style: "极简",
       },
       {
         label: "外卖缩略图",
         text: "外卖平台商家缩略图，一碗热气腾腾的拉面俯拍，配菜整齐摆放，色彩饱满明亮，商业广告级",
         size: "1024x1024",
+        quality: "high",
       },
     ],
   },
@@ -200,16 +235,21 @@ const PRESETS: { group: string; items: PresetItem[] }[] = [
         label: "宝宝百天照",
         text: "宝宝百天纪念照，婴儿穿米色连身衣躺在柔软奶油色毛毯上，自然窗光，柔焦背景，轻微晨曦暖色",
         size: "1024x1536",
+        quality: "high",
       },
       {
         label: "萌娃绘本风",
         text: "萌娃绘本插画，小女孩抱着毛绒兔子在花丛中奔跑，蓬松水彩笔触，童书级质感，柔和暖色调",
         size: "1024x1536",
+        quality: "high",
+        style: "童话",
       },
       {
         label: "亲子合影",
         text: "亲子家庭温馨合影，父母与孩子坐在客厅地毯上大笑，自然窗光，胶片色调，生活化瞬间",
         size: "1536x1024",
+        quality: "high",
+        style: "胶片",
       },
       {
         label: "儿童节海报",
@@ -220,6 +260,8 @@ const PRESETS: { group: string; items: PresetItem[] }[] = [
         label: "故事书封面",
         text: "儿童故事书封面设计，主角小熊站在魔法森林入口，手绘水彩风格，金色标题装饰，复古童书质感",
         size: "1024x1536",
+        quality: "high",
+        style: "童话",
       },
       {
         label: "手工展示图",
@@ -340,30 +382,36 @@ const PRESETS: { group: string; items: PresetItem[] }[] = [
         label: "马斯克卖火箭",
         text: "抖音竖屏直播间截图风格，马斯克身穿 SpaceX 黑 T 对镜头大笑，双手高举一枚 Falcon 9 火箭模型，环形补光灯在瞳孔留下圆环高光，桌面堆放 Starship 周边，画面顶部弹幕飘「买了买了」「家人们冲」，中央红底黄字「9.9 秒杀 三二一上链接」贴纸，左下角小黄车图标，过饱和暖色美颜滤镜",
         size: "1024x1536",
+        quality: "high",
       },
       {
         label: "川普上链接",
         text: "抖音竖屏直播间实拍感，特朗普戴红色 MAGA 帽指向镜头，桌上堆满金色运动鞋、牛排与小国旗，身后绿幕贴「美国优先 专属价」海报，顶部在线人数 12.3 万，右侧飘过爱心与火箭礼物动画，中央红色秒杀贴纸「限时 $0.99 仅剩 87 件」，底部倒计时 03:42，环形补光灯瞳孔高光",
         size: "1024x1536",
+        quality: "high",
       },
       {
         label: "霸总直播首秀",
         text: "抖音直播间首秀截图风格，西装革履的科技公司 CEO 坐在简洁黑色桌前，手握一只最新款消费电子产品对着镜头微微倾身推荐，身后品牌 Logo 灯箱虚化，环形补光灯高光，屏幕顶部显示「在线 56 万」，下方小黄车与「点击购买」CTA，弹幕「老板真的会带货？」「上链接！」飘过",
         size: "1024x1536",
+        quality: "high",
       },
       {
         label: "夜市地摊吆喝",
         text: "城中村夜市地摊手机竖屏直播，摊主蹲在塑料布后面，一堆火箭模型、坦克模型、旧手机乱堆，手写纸板「全场 3 块不讲价」，头顶一只白炽灯泡与手机闪光灯混合光源，夜色湿润地面反光，弹幕「老板抽根烟」「这火箭能飞吗」飘过，画面一角 9 块 9 橙色贴纸",
         size: "1024x1536",
+        quality: "high",
       },
       {
         label: "9块9秒杀海报",
         text: "抖音电商爆款商品主图风格，纯色明亮橙红渐变背景，中央放置一件荒诞商品（可替换），周围环绕放射状红色贴纸「限时秒杀」「9.9 包邮」「仅剩 199 件」「三二一 上链接」，左下划线价 ¥999 红色直播间专属价 ¥9.9，右上小黄车图标，高饱和糖果色电商风格",
         size: "1024x1024",
+        quality: "high",
       },
       {
         label: "名人带货移花接木",
         text: "把照片里的人物放进抖音竖屏直播间：保留其五官与发型，换成带货主播姿态——微微前倾、一手举产品一手比划，身后虚化的产品货架与品牌灯箱，环形补光灯瞳孔高光，画面叠加顶部在线人数、中央「三二一上链接」红底贴纸、弹幕飘屏、左下小黄车，过饱和暖色美颜滤镜",
+        quality: "high",
         needsImage: true,
       },
     ],
@@ -375,31 +423,43 @@ const PRESETS: { group: string; items: PresetItem[] }[] = [
         label: "图形摘要",
         text: "学术期刊 graphical abstract 风格，正方形构图，单一核心机制居中，左到右叙事流，扁平矢量图标与带标签箭头连接，清爽白底留白充足，Okabe-Ito 色板（蓝橙青米）或柔和 teal-navy-coral 三色，Arial 无衬线极小字号占位标签，无装饰性渐变与阴影，印刷级线稿质感",
         size: "1024x1024",
+        quality: "high",
+        style: "极简",
       },
       {
         label: "生物通路图",
         text: "BioRender 风格生物通路示意图，细胞膜横截面作为舞台，磷脂双层分明，跨膜蛋白、激酶、转录因子以扁平矢量圆角图标呈现，信号传递用黑色实线箭头与虚线反馈箭头标注，teal 与 coral 双色编码不同通路，白底，6–8pt 无衬线占位文字框，期刊发表级",
         size: "1536x1024",
+        quality: "high",
+        style: "极简",
       },
       {
         label: "神经网络架构",
         text: "机器学习论文 architecture diagram 风格，自左至右横向堆叠输入层、若干隐藏层（用重复长方体立方表示维度）、注意力模块与输出层，层间数据流以细实线箭头标注，淡蓝到深灰渐进填色，浅灰背景，角标 placeholder 维度 B×N×d，极简无衬线字体，ICML/NeurIPS 投稿配图质感",
         size: "1536x1024",
+        quality: "high",
+        style: "极简",
       },
       {
         label: "实验流程图",
         text: "横向实验流程示意图，五个等距圆角方框串联，箭头连接表示先后，每框内含扁平矢量图标（烧瓶、离心机、样本管、显微镜、数据表）并在下方留出 caption 占位，全图统一 1.5pt 黑色描边与单一主色调 navy，白底充足留白，类似 Nature Protocols 配图风格",
         size: "1536x1024",
+        quality: "high",
+        style: "极简",
       },
       {
         label: "Nature 封面插画",
         text: "Nature 期刊封面概念插画风格，单一科学概念以视觉隐喻呈现（如 DNA 双螺旋融入宇宙星轨、神经元汇聚成城市夜景），半写实半概念融合，戏剧性低角度主光与深蓝—琥珀对比光，中央留出刊名与期号的排版空间，构图具书影级质感，极高细节",
         size: "1024x1536",
+        quality: "high",
+        style: "电影",
       },
       {
         label: "学术会议海报",
         text: "A0 纵版学术会议海报布局，顶部深色标题横幅预留大标题与作者单位空间，下方三列均分：左列研究背景与问题，中列方法与实验流程配图占位，右列结果与结论，柱状图/示意图/流程图整齐嵌入，极简 Swiss 排版，深蓝主色搭配中性灰，充足留白，IEEE/ACM/Nature 会议风",
         size: "1024x1536",
+        quality: "high",
+        style: "极简",
       },
     ],
   },
@@ -459,6 +519,22 @@ const EDIT_PRESETS: { label: string; text: string }[] = [
   { label: "清理杂物", text: "移除画面中所有杂乱物品，保持构图干净整洁" },
   { label: "季节切换", text: "把场景换成冬季，加入轻柔雪花与冷色调光线" },
 ];
+
+// User-facing microcopy for the params strip. Short, concrete tradeoffs so
+// users learn which tier matches which task without reading docs.
+const SIZE_HINTS: Record<string, string> = {
+  auto: "由模型按意图决定画布",
+  "1024x1024": "方图 · 基线画布，适合头像/产品/方形海报",
+  "1536x1024": "横版 · 适合合影/风景/宽构图",
+  "1024x1536": "竖版 · 适合人像/海报/故事书",
+  "2048x2048": "大方图 · 生成较慢、成本更高，用于印刷级需求",
+};
+const QUALITY_HINTS: Record<string, string> = {
+  auto: "由模型决定，日常场景可用",
+  low: "草稿 · 最快，适合试版与快速迭代",
+  medium: "标准 · 日常发布可用的平衡档",
+  high: "精制 · 人像 / 产品 / 文字建议使用，生成较慢",
+};
 
 const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
 
@@ -566,9 +642,29 @@ export default function Home() {
 
   const [museState, setMuseState] = useState<MuseState>("idle");
   const [museError, setMuseError] = useState<string | null>(null);
+  // Short explanation shown when MUSE auto-upgrades size/quality based on
+  // portrait-intent detection. Cleared as soon as the user touches a control.
+  const [hintNote, setHintNote] = useState<string | null>(null);
+  // Tracks which gallery plate is currently being refined; -1 = none.
+  const [refiningIdx, setRefiningIdx] = useState<number>(-1);
+  // Index of the plate currently open in the text-overlay modal; -1 = closed.
+  const [overlayIdx, setOverlayIdx] = useState<number>(-1);
 
   const promptRef = useRef<HTMLTextAreaElement>(null);
   const gallerySectionRef = useRef<HTMLElement>(null);
+  // Mirror size/quality into refs so the async MUSE handler can check the
+  // LATEST user-facing values when the response arrives, rather than the
+  // stale values captured in the closure at call time. Without this, a user
+  // who changes size/quality mid-flight has their explicit pick overwritten
+  // by a late-arriving portrait-intent nudge.
+  const sizeRef = useRef(size);
+  const qualityRef = useRef(quality);
+  useEffect(() => {
+    sizeRef.current = size;
+  }, [size]);
+  useEffect(() => {
+    qualityRef.current = quality;
+  }, [quality]);
 
   useEffect(() => {
     setStamp(todayStamp());
@@ -659,6 +755,11 @@ export default function Home() {
       if (mode !== "edit") setMode("edit");
       setEditInstruction(hit.text);
       if (hit.size) setSize(hit.size);
+      if (hit.quality) setQuality(hit.quality);
+      // Style chip is a rewriter input (only relevant in generate mode) — in
+      // edit mode we still capture it for when the user switches back, but
+      // the edit call itself doesn't consume the style.
+      if (hit.style !== undefined) setStyle(hit.style);
       // Nudge attention toward the upload zone if no image is loaded yet.
       if (!editFile) {
         requestAnimationFrame(() => {
@@ -673,7 +774,11 @@ export default function Home() {
     } else {
       setIntent(hit.text);
       if (hit.size) setSize(hit.size);
+      if (hit.quality) setQuality(hit.quality);
+      if (hit.style !== undefined) setStyle(hit.style);
     }
+    // Applying a preset is an explicit pick; clear any lingering auto-nudge.
+    setHintNote(null);
   }
 
   async function onMuse() {
@@ -707,10 +812,120 @@ export default function Home() {
         window.setTimeout(() => setPromptFresh(false), 1400);
         promptRef.current?.focus({ preventScroll: true });
       }
+      // Apply server-side hints for portrait-like intents, but only when
+      // the user is still on the default "auto" for that control — never
+      // overwrite an explicit pick.
+      const hints = data.hints as
+        | {
+            needsHighQuality?: boolean;
+            preferredSize?: string;
+            reason?: string;
+          }
+        | undefined;
+      if (hints) {
+        let nudged = false;
+        // Read LATEST size/quality via refs, not closure-captured values —
+        // the user may have adjusted either control while the request was
+        // in flight; in that case we must leave their explicit pick alone.
+        if (hints.needsHighQuality && qualityRef.current === "auto") {
+          setQuality("high");
+          nudged = true;
+        }
+        if (hints.preferredSize && sizeRef.current === "auto") {
+          setSize(hints.preferredSize);
+          nudged = true;
+        }
+        setHintNote(nudged && hints.reason ? hints.reason : null);
+      } else {
+        setHintNote(null);
+      }
       setMuseState("idle");
     } catch (err) {
       setMuseError((err as Error).message);
       setMuseState("error");
+    }
+  }
+
+  // Re-run /images/edits on an already-generated plate with a face-targeting
+  // refine prompt + input_fidelity=high + quality=high. Honest limits: this
+  // can lift apparent sharpness and eye/skin micro-detail on a face that is
+  // already reasonably sized; it will NOT rescue a face that was tiny at
+  // generation time (for that, Phase 1's portrait-intent auto-upgrade is the
+  // preventive fix). The upstream /images/edits endpoint does not support
+  // true mask-based inpainting, so we run a full-image edit pass and rely on
+  // the Preserve block to hold everything else steady.
+  async function onRefineFace(idx: number, src: string) {
+    if (refiningIdx !== -1) return;
+    if (quota.remaining <= 0) {
+      setError("可用次数已用完。");
+      setStatus("error");
+      return;
+    }
+    setRefiningIdx(idx);
+    setError(null);
+    try {
+      // Turn the rendered src (data URL or remote URL) into a Blob we can
+      // post back. For data URLs, do the conversion in-process; for remote
+      // URLs, fetch first (same-origin b64 paths are the common case).
+      let blob: Blob;
+      if (src.startsWith("data:")) {
+        const [header, b64] = src.split(",", 2);
+        const mime = header.match(/^data:([^;]+)/)?.[1] ?? "image/png";
+        const binary = atob(b64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+        blob = new Blob([bytes], { type: mime });
+      } else {
+        const r = await fetch(src);
+        if (!r.ok) throw new Error(`无法读取原图：HTTP ${r.status}`);
+        blob = await r.blob();
+      }
+
+      const refinePrompt =
+        "Enhance the portrait fidelity on this image: render sharp eyes with visible catchlights, a defined nose bridge, individual eyelashes, and natural skin pore texture on every visible face. Preserve identity, pose, expression, framing, lighting, background, color grade, and all non-face content EXACTLY — do not restyle, recompose, crop, add, or remove anything. Only increase apparent sharpness and micro-detail of the face region.";
+
+      const body = new FormData();
+      body.set("prompt", refinePrompt);
+      // The refine prompt already embeds its own Preserve block, so bypass
+      // the server-side Change/Preserve/Constraints wrapper.
+      body.set("raw", "1");
+      body.set("size", "auto");
+      body.set("quality", "high");
+      body.set("n", "1");
+      body.set("output_format", format);
+      body.set("input_fidelity", "high");
+      body.set("image", blob, `plate-${idx + 1}.png`);
+
+      const res = await fetch("/api/edit", { method: "POST", body });
+      const data = await safeJson(res);
+      if (!res.ok) {
+        const detail =
+          typeof data?.details === "string"
+            ? (data.details as string)
+            : data?.details
+              ? JSON.stringify(data.details)
+              : "";
+        throw new Error(
+          data?.error
+            ? `${data.error as string}${detail ? `：${detail}` : ""}`
+            : "精修失败",
+        );
+      }
+      const refined = (data.images as string[] | undefined)?.[0];
+      if (!refined) throw new Error("精修未返回图片");
+      setImages((prev) => prev.map((s, i) => (i === idx ? refined : s)));
+      if (typeof data.limit === "number") {
+        setQuota({
+          limit: data.limit as number,
+          used: data.used as number,
+          remaining: data.remaining as number,
+        });
+      }
+    } catch (err) {
+      setError((err as Error).message);
+      setStatus("error");
+    } finally {
+      setRefiningIdx(-1);
     }
   }
 
@@ -744,11 +959,17 @@ export default function Home() {
   }
 
   const quotaExhausted = quota.remaining <= 0;
+  // While a refine is in flight we must block new generate/edit submissions.
+  // Quota is read-modify-write server-side (see lib/quota.ts recordUsage),
+  // so concurrent requests can lose updates. The frontend gate is the
+  // cheap fix until that backend is made atomic.
+  const refineInFlight = refiningIdx !== -1;
 
   const generateDisabled =
-    status === "loading" || !prompt.trim() || quotaExhausted;
+    status === "loading" || refineInFlight || !prompt.trim() || quotaExhausted;
   const editDisabled =
     status === "loading" ||
+    refineInFlight ||
     !editFile ||
     !editInstruction.trim() ||
     quotaExhausted;
@@ -921,7 +1142,11 @@ export default function Home() {
                   <textarea
                     className="intent-input"
                     value={intent}
-                    onChange={(e) => setIntent(e.target.value)}
+                    onChange={(e) => {
+                      setIntent(e.target.value);
+                      // Any edit to intent invalidates the prior auto-nudge.
+                      setHintNote(null);
+                    }}
                     placeholder="写下你想看到的画面，一句或一段都好。&#10;例：一只戴围巾的柴犬坐在月球上，背后地球正在升起，胶片颗粒。"
                     rows={4}
                     maxLength={600}
@@ -969,7 +1194,10 @@ export default function Home() {
                         role="radio"
                         aria-checked={style === s.value}
                         className={`style-chip${style === s.value ? " is-on" : ""}${s.value === "" ? " style-chip-none" : ""}`}
-                        onClick={() => setStyle(s.value)}
+                        onClick={() => {
+                          setStyle(s.value);
+                          setHintNote(null);
+                        }}
                         disabled={museState === "generating"}
                       >
                         {s.label}
@@ -1025,6 +1253,7 @@ export default function Home() {
                   onChange={(e) => {
                     setPrompt(e.target.value);
                     if (promptOrigin !== "hand") setPromptOrigin("hand");
+                    setHintNote(null);
                   }}
                   placeholder="详细提示词将出现在这里，或你也可以直接在此落笔。"
                 />
@@ -1234,7 +1463,10 @@ export default function Home() {
               <select
                 className="param-select"
                 value={size}
-                onChange={(e) => setSize(e.target.value)}
+                onChange={(e) => {
+                  setSize(e.target.value);
+                  setHintNote(null);
+                }}
               >
                 {SIZES.map((o) => (
                   <option key={o.value} value={o.value}>
@@ -1242,13 +1474,19 @@ export default function Home() {
                   </option>
                 ))}
               </select>
+              {SIZE_HINTS[size] && (
+                <span className="param-hint">{SIZE_HINTS[size]}</span>
+              )}
             </label>
             <label className="param-inline">
               <span className="micro-label">质量</span>
               <select
                 className="param-select"
                 value={quality}
-                onChange={(e) => setQuality(e.target.value)}
+                onChange={(e) => {
+                  setQuality(e.target.value);
+                  setHintNote(null);
+                }}
               >
                 {QUALITIES.map((o) => (
                   <option key={o.value} value={o.value}>
@@ -1256,6 +1494,9 @@ export default function Home() {
                   </option>
                 ))}
               </select>
+              {QUALITY_HINTS[quality] && (
+                <span className="param-hint">{QUALITY_HINTS[quality]}</span>
+              )}
             </label>
             <label className="param-inline">
               <span className="micro-label">格式</span>
@@ -1310,6 +1551,15 @@ export default function Home() {
             )}
           </button>
         </div>
+        {hintNote && (
+          <div
+            className="hint-note"
+            role="note"
+            aria-live="polite"
+          >
+            {hintNote}
+          </div>
+        )}
       </form>
 
       <div className="side-notes">
@@ -1424,7 +1674,30 @@ export default function Home() {
                 <div className="plate-frame">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={src} alt={`生成结果 ${i + 1}`} />
+                  {refiningIdx === i && (
+                    <div className="plate-refining" aria-live="polite">
+                      <span className="spinner" aria-hidden />
+                      <span>精修中…</span>
+                    </div>
+                  )}
                   <div className="plate-overlay">
+                    <button
+                      type="button"
+                      className="plate-refine"
+                      onClick={() => setOverlayIdx(i)}
+                      title="在图上叠加自定义中文文字（客户端烘焙，100% 字形保真；不消耗额度）。"
+                    >
+                      加文字
+                    </button>
+                    <button
+                      type="button"
+                      className="plate-refine"
+                      onClick={() => onRefineFace(i, src)}
+                      disabled={refiningIdx !== -1 || quota.remaining <= 0}
+                      title="对画面中的人像做一次精修：提升眼神、皮肤与五官清晰度，保留其余内容不变。消耗 1 次额度。"
+                    >
+                      精修人像
+                    </button>
                     <a
                       className="plate-download"
                       href={src}
@@ -1459,6 +1732,19 @@ export default function Home() {
         </a>
         <span className="colophon-seal">朱砂 · No. {quota.used}</span>
       </footer>
+
+      {overlayIdx !== -1 && images[overlayIdx] && (
+        <TextOverlay
+          image={images[overlayIdx]}
+          onClose={() => setOverlayIdx(-1)}
+          onApply={(dataUrl) => {
+            setImages((prev) =>
+              prev.map((s, i) => (i === overlayIdx ? dataUrl : s)),
+            );
+            setOverlayIdx(-1);
+          }}
+        />
+      )}
     </main>
   );
 }

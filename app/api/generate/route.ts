@@ -83,6 +83,18 @@ async function handlePost(req: Request) {
     size: body.size ?? "auto",
   };
   if (body.quality) basePayload.quality = body.quality;
+  // `background: "transparent"` currently fails on gpt-image-2 (the UI does
+  // not expose this control, but we guard anyway in case a direct API
+  // consumer sends it). Surface a clean error instead of silently hitting
+  // the upstream's generic failure.
+  if (body.background === "transparent" && model.startsWith("gpt-image-2")) {
+    return NextResponse.json(
+      {
+        error: "gpt-image-2 暂不支持透明背景，请选择 opaque 或 auto",
+      },
+      { status: 400 },
+    );
+  }
   if (body.background) basePayload.background = body.background;
   if (body.output_format) basePayload.output_format = body.output_format;
   if (typeof body.output_compression === "number") {
