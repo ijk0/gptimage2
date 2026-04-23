@@ -9,12 +9,13 @@ type MuseState = "idle" | "generating" | "error";
 
 const STYLES: { value: string; label: string }[] = [
   { value: "", label: "无" },
-  { value: "水墨", label: "水墨" },
-  { value: "东方", label: "东方" },
-  { value: "极简", label: "极简" },
+  { value: "胶片", label: "胶片" },
   { value: "电影", label: "电影" },
   { value: "时尚", label: "时尚" },
+  { value: "极简", label: "极简" },
   { value: "童话", label: "童话" },
+  { value: "水墨", label: "水墨" },
+  { value: "东方", label: "东方" },
   { value: "赛博", label: "赛博" },
   { value: "科幻", label: "科幻" },
   { value: "蒸汽", label: "蒸汽" },
