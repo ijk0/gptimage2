@@ -520,6 +520,126 @@ a {
   background: color-mix(in oklch, var(--cinnabar) 8%, var(--paper));
 }
 
+/* ========== Muse (AI 构思) ========== */
+
+.muse {
+  display: grid;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--paper-sunken);
+  border: 1px solid var(--rule);
+  border-top: 2px solid var(--ink);
+  position: relative;
+}
+
+.muse::before {
+  content: "";
+  position: absolute;
+  top: -2px;
+  left: 0;
+  width: 24px;
+  height: 2px;
+  background: var(--cinnabar);
+}
+
+.muse-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding-bottom: 2px;
+}
+
+.muse-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.muse-model {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--cinnabar);
+}
+
+.muse-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.muse-chip {
+  padding: 5px 10px;
+  font-family: var(--font-serif);
+  font-size: 13px;
+  color: var(--ink-muted);
+  background: transparent;
+  border: 1px solid var(--rule);
+  border-radius: 0;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.muse-chip:hover:not(:disabled) {
+  color: var(--ink);
+  border-color: var(--rule-strong);
+}
+
+.muse-chip.is-on {
+  color: var(--cinnabar-ink);
+  background: var(--cinnabar);
+  border-color: var(--cinnabar);
+}
+
+.muse-chip:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.muse-action {
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 9px 12px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid var(--ink);
+  transition:
+    background 0.18s ease,
+    color 0.18s ease;
+}
+
+.muse-action:hover:not(:disabled) {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.muse-action:disabled {
+  color: var(--ink-subtle);
+  border-color: var(--rule);
+  cursor: wait;
+}
+
+.muse-error {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.4px;
+  color: var(--danger);
+  padding-top: 2px;
+}
+
 /* ========== Recharge ========== */
 
 .recharge {

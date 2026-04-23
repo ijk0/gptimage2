@@ -8,6 +8,21 @@ type Quota = { limit: number; used: number; remaining: number; grant?: number };
 
 type RechargeState = "idle" | "submitting" | "ok" | "error";
 
+type MuseState = "idle" | "generating" | "error";
+
+const SCENARIOS: { label: string; seed: string }[] = [
+  { label: "风景", seed: "一处令人驻足的自然风景" },
+  { label: "人像", seed: "一张富有故事感的人物肖像" },
+  { label: "静物", seed: "一组富有诗意的静物组合" },
+  { label: "建筑", seed: "一处富有个性的建筑空间" },
+  { label: "抽象", seed: "一幅充满张力的抽象构图" },
+  { label: "科幻", seed: "一个未来感十足的科幻场景" },
+  { label: "童话", seed: "一个温柔奇妙的童话场景" },
+  { label: "电影", seed: "一帧极具氛围的电影剧照" },
+  { label: "时尚", seed: "一张高级时装大片" },
+  { label: "东方", seed: "一幅带有东方美学意蕴的画面" },
+];
+
 const DEFAULT_PROMPT =
   "极简主义水墨山水画，远山云雾缭绕，一叶扁舟漂于湖面，留白充足，淡雅写意，柔和的东方美学";
 
@@ -113,6 +128,9 @@ export default function Home() {
   const [rechargeCode, setRechargeCode] = useState("");
   const [rechargeState, setRechargeState] = useState<RechargeState>("idle");
   const [rechargeMsg, setRechargeMsg] = useState<string | null>(null);
+  const [museState, setMuseState] = useState<MuseState>("idle");
+  const [museScenario, setMuseScenario] = useState<string>(SCENARIOS[0].label);
+  const [museError, setMuseError] = useState<string | null>(null);
 
   useEffect(() => {
     setStamp(todayStamp());
@@ -127,6 +145,40 @@ export default function Home() {
       .then((d: { enabled: boolean }) => setRechargeEnabled(!!d.enabled))
       .catch(() => {});
   }, []);
+
+  async function onMuse() {
+    if (museState === "generating") return;
+    const scenario = SCENARIOS.find((s) => s.label === museScenario);
+    if (!scenario) return;
+    setMuseState("generating");
+    setMuseError(null);
+    try {
+      const res = await fetch("/api/prompt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scenario: scenario.seed }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        const detail =
+          typeof data?.details === "string"
+            ? data.details
+            : data?.details
+              ? JSON.stringify(data.details)
+              : "";
+        throw new Error(
+          data?.error ? `${data.error}${detail ? `：${detail}` : ""}` : "生成失败",
+        );
+      }
+      if (typeof data.prompt === "string" && data.prompt.trim()) {
+        setPrompt(data.prompt.trim());
+      }
+      setMuseState("idle");
+    } catch (err) {
+      setMuseError((err as Error).message);
+      setMuseState("error");
+    }
+  }
 
   async function onRecharge(e: React.FormEvent) {
     e.preventDefault();
@@ -236,6 +288,51 @@ export default function Home() {
           <div className="spec-heading">
             <span className="spec-heading-title">创作工单</span>
             <span className="spec-heading-no">Section I · Brief</span>
+          </div>
+
+          <div className="muse">
+            <div className="muse-head">
+              <span className="muse-label">AI 构思 · Muse</span>
+              <span className="muse-model">gpt-5.4</span>
+            </div>
+            <div className="muse-chips" role="radiogroup" aria-label="主题">
+              {SCENARIOS.map((s) => (
+                <button
+                  key={s.label}
+                  type="button"
+                  role="radio"
+                  aria-checked={museScenario === s.label}
+                  className={`muse-chip${museScenario === s.label ? " is-on" : ""}`}
+                  onClick={() => setMuseScenario(s.label)}
+                  disabled={museState === "generating"}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              className="muse-action"
+              onClick={onMuse}
+              disabled={museState === "generating"}
+            >
+              {museState === "generating" ? (
+                <>
+                  <span className="spinner" aria-hidden />
+                  思考中…
+                </>
+              ) : (
+                <>
+                  <span aria-hidden>▸</span>
+                  <span>生成提示词</span>
+                </>
+              )}
+            </button>
+            {museError && museState === "error" && (
+              <div className="muse-error" role="alert">
+                {museError}
+              </div>
+            )}
           </div>
 
           <div className="prompt-block">

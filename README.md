@@ -21,6 +21,7 @@ local `.env.local` for development):
 | `IMAGE_API_URL` | yes      | Base URL of the API, e.g. `https://api.openai.com/v1`. No trailing path.          |
 | `IMAGE_API_KEY` | yes      | Bearer token for the API.                                                         |
 | `IMAGE_MODEL`   | no       | Model name. Defaults to `gpt-image-2`.                                            |
+| `TEXT_MODEL`    | no       | Chat model for "AI 构思" prompt crafting. Defaults to `gpt-5.4`. Must be served at `{IMAGE_API_URL}/chat/completions` by the same key. |
 | `FREE_LIMIT`    | no       | Max free generations per visitor (cookie-tracked). Defaults to `5`.               |
 | `RECHARGE_CODES`| no       | Comma-separated redemption codes. `WELCOME` uses `RECHARGE_AMOUNT`; `FRIEND:10` adds 10. Unset hides the redeem UI. |
 | `RECHARGE_AMOUNT`| no      | Default amount for codes without an explicit `:N` suffix. Defaults to `5`.        |
