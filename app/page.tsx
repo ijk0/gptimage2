@@ -4,7 +4,9 @@ import { useEffect, useState } from "react";
 
 type Status = "idle" | "loading" | "error";
 
-type Quota = { limit: number; used: number; remaining: number };
+type Quota = { limit: number; used: number; remaining: number; grant?: number };
+
+type RechargeState = "idle" | "submitting" | "ok" | "error";
 
 const DEFAULT_PROMPT =
   "极简主义水墨山水画，远山云雾缭绕，一叶扁舟漂于湖面，留白充足，淡雅写意，柔和的东方美学";
@@ -55,7 +57,33 @@ const FORMATS = [
 
 const COUNTS = [1, 2, 3, 4];
 
-const ROMAN = ["I", "II", "III", "IV"];
+function toRoman(num: number): string {
+  if (num <= 0 || num > 3999) return String(num);
+  const values: [number, string][] = [
+    [1000, "M"],
+    [900, "CM"],
+    [500, "D"],
+    [400, "CD"],
+    [100, "C"],
+    [90, "XC"],
+    [50, "L"],
+    [40, "XL"],
+    [10, "X"],
+    [9, "IX"],
+    [5, "V"],
+    [4, "IV"],
+    [1, "I"],
+  ];
+  let out = "";
+  let n = num;
+  for (const [v, s] of values) {
+    while (n >= v) {
+      out += s;
+      n -= v;
+    }
+  }
+  return out;
+}
 
 function todayStamp(): string {
   const d = new Date();
@@ -80,6 +108,11 @@ export default function Home() {
     remaining: 5,
   });
   const [stamp, setStamp] = useState("");
+  const [rechargeEnabled, setRechargeEnabled] = useState(false);
+  const [rechargeOpen, setRechargeOpen] = useState(false);
+  const [rechargeCode, setRechargeCode] = useState("");
+  const [rechargeState, setRechargeState] = useState<RechargeState>("idle");
+  const [rechargeMsg, setRechargeMsg] = useState<string | null>(null);
 
   useEffect(() => {
     setStamp(todayStamp());
@@ -89,7 +122,40 @@ export default function Home() {
         if (d) setQuota(d);
       })
       .catch(() => {});
+    fetch("/api/recharge")
+      .then((r) => r.json())
+      .then((d: { enabled: boolean }) => setRechargeEnabled(!!d.enabled))
+      .catch(() => {});
   }, []);
+
+  async function onRecharge(e: React.FormEvent) {
+    e.preventDefault();
+    if (!rechargeCode.trim() || rechargeState === "submitting") return;
+    setRechargeState("submitting");
+    setRechargeMsg(null);
+    try {
+      const res = await fetch("/api/recharge", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: rechargeCode.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error ?? "兑换失败");
+      setQuota({
+        limit: data.limit,
+        used: data.used,
+        remaining: data.remaining,
+        grant: data.grant,
+      });
+      setRechargeState("ok");
+      setRechargeMsg(`兑换成功，次数 +${data.added}`);
+      setRechargeCode("");
+      if (error) setError(null);
+    } catch (err) {
+      setRechargeState("error");
+      setRechargeMsg((err as Error).message);
+    }
+  }
 
   const quotaExhausted = quota.remaining <= 0;
   const disabled = status === "loading" || !prompt.trim() || quotaExhausted;
@@ -203,7 +269,7 @@ export default function Home() {
                 onClick={() => setPrompt(p.text)}
               >
                 <span className="preset-numeral">
-                  {ROMAN[i] ?? String(i + 1)}
+                  {toRoman(i + 1)}
                 </span>
                 <span className="preset-name">{p.label}</span>
                 <span className="preset-arrow" aria-hidden>
@@ -297,6 +363,68 @@ export default function Home() {
               {error}
             </div>
           )}
+
+          {rechargeEnabled && (
+            <div className="recharge">
+              {!rechargeOpen ? (
+                <button
+                  type="button"
+                  className="recharge-toggle"
+                  onClick={() => setRechargeOpen(true)}
+                >
+                  {quotaExhausted
+                    ? "输入兑换码继续 →"
+                    : "有兑换码？"}
+                </button>
+              ) : (
+                <form className="recharge-form" onSubmit={onRecharge}>
+                  <div className="recharge-head">
+                    <span className="recharge-title">兑换次数 · Redeem</span>
+                    <button
+                      type="button"
+                      className="recharge-close"
+                      onClick={() => {
+                        setRechargeOpen(false);
+                        setRechargeMsg(null);
+                      }}
+                      aria-label="关闭"
+                    >
+                      ×
+                    </button>
+                  </div>
+                  <div className="recharge-row">
+                    <input
+                      type="text"
+                      className="recharge-input"
+                      value={rechargeCode}
+                      onChange={(e) => setRechargeCode(e.target.value)}
+                      placeholder="WELCOME / FRIEND …"
+                      autoComplete="off"
+                      spellCheck={false}
+                    />
+                    <button
+                      type="submit"
+                      className="recharge-submit"
+                      disabled={
+                        !rechargeCode.trim() || rechargeState === "submitting"
+                      }
+                    >
+                      {rechargeState === "submitting" ? "兑换中" : "兑换"}
+                    </button>
+                  </div>
+                  {rechargeMsg && (
+                    <div
+                      className={`recharge-msg recharge-msg-${
+                        rechargeState === "ok" ? "ok" : "err"
+                      }`}
+                    >
+                      {rechargeMsg}
+                    </div>
+                  )}
+                </form>
+              )}
+            </div>
+          )}
         </form>
 
         <section className="gallery-col" aria-live="polite">
@@ -318,7 +446,7 @@ export default function Home() {
                   <div className="skeleton-plate" />
                   <div className="plate-caption">
                     <span className="plate-numeral">
-                      Plate {ROMAN[i] ?? i + 1}
+                      Plate {toRoman(i + 1)}
                     </span>
                     <span>制版中…</span>
                   </div>
@@ -344,7 +472,7 @@ export default function Home() {
                   </div>
                   <figcaption className="plate-caption">
                     <span className="plate-numeral">
-                      Plate {ROMAN[i] ?? i + 1}
+                      Plate {toRoman(i + 1)}
                     </span>
                     <span>
                       {size === "auto" ? "AUTO" : size} · {format.toUpperCase()}

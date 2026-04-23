@@ -1,11 +1,8 @@
 import { NextResponse } from "next/server";
+import { readQuota, setQuotaCookies, FREE_LIMIT } from "@/lib/quota";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
-
-const FREE_LIMIT = Number(process.env.FREE_LIMIT ?? 5);
-const COOKIE_NAME = "gi2_used";
-const COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 
 type GenerateBody = {
   prompt?: string;
@@ -17,21 +14,6 @@ type GenerateBody = {
   output_compression?: number;
   moderation?: string;
 };
-
-function readUsed(req: Request): number {
-  const cookie = req.headers.get("cookie") ?? "";
-  const match = cookie.match(new RegExp(`${COOKIE_NAME}=(\\d+)`));
-  if (!match) return 0;
-  const n = Number(match[1]);
-  return Number.isFinite(n) && n >= 0 ? Math.floor(n) : 0;
-}
-
-function setUsedCookie(res: NextResponse, used: number) {
-  res.headers.append(
-    "Set-Cookie",
-    `${COOKIE_NAME}=${used}; Path=/; Max-Age=${COOKIE_MAX_AGE}; SameSite=Lax; HttpOnly`,
-  );
-}
 
 export async function POST(req: Request) {
   const apiUrl = process.env.IMAGE_API_URL;
@@ -58,23 +40,19 @@ export async function POST(req: Request) {
   }
 
   const requestedN = Math.min(Math.max(body.n ?? 1, 1), 4);
-  const used = readUsed(req);
-  const remaining = Math.max(FREE_LIMIT - used, 0);
+  const quota = readQuota(req);
 
-  if (remaining <= 0) {
-    const res = NextResponse.json(
+  if (quota.remaining <= 0) {
+    return NextResponse.json(
       {
-        error: `免费额度已用完（${FREE_LIMIT} 张）。如需继续使用，请联系站长或自行部署。`,
-        limit: FREE_LIMIT,
-        used,
-        remaining: 0,
+        error: `免费额度已用完（${quota.limit} 张）。可使用兑换码继续生成。`,
+        ...quota,
       },
       { status: 429 },
     );
-    return res;
   }
 
-  const effectiveN = Math.min(requestedN, remaining);
+  const effectiveN = Math.min(requestedN, quota.remaining);
   const endpoint = apiUrl.replace(/\/+$/, "") + "/images/generations";
 
   const payload: Record<string, unknown> = {
@@ -154,23 +132,22 @@ export async function POST(req: Request) {
     );
   }
 
-  const nextUsed = Math.min(used + images.length, FREE_LIMIT);
+  const newUsed = quota.used + images.length;
+  const newRemaining = Math.max(quota.limit - newUsed, 0);
   const res = NextResponse.json({
     images,
     format,
-    limit: FREE_LIMIT,
-    used: nextUsed,
-    remaining: Math.max(FREE_LIMIT - nextUsed, 0),
+    limit: quota.limit,
+    used: newUsed,
+    remaining: newRemaining,
+    grant: quota.grant,
   });
-  setUsedCookie(res, nextUsed);
+  setQuotaCookies(res, { used: newUsed, grant: quota.grant });
   return res;
 }
 
 export async function GET(req: Request) {
-  const used = readUsed(req);
-  return NextResponse.json({
-    limit: FREE_LIMIT,
-    used,
-    remaining: Math.max(FREE_LIMIT - used, 0),
-  });
+  const quota = readQuota(req);
+  void FREE_LIMIT;
+  return NextResponse.json(quota);
 }

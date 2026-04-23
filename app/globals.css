@@ -520,6 +520,133 @@ a {
   background: color-mix(in oklch, var(--cinnabar) 8%, var(--paper));
 }
 
+/* ========== Recharge ========== */
+
+.recharge {
+  border-top: 1px dotted var(--rule-strong);
+  padding-top: var(--space-md);
+}
+
+.recharge-toggle {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--cinnabar);
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 4px;
+  transition: opacity 0.15s ease;
+}
+
+.recharge-toggle:hover {
+  opacity: 0.75;
+}
+
+.recharge-form {
+  display: grid;
+  gap: var(--space-xs);
+  animation: unfold 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes unfold {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.recharge-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.recharge-title {
+  font-family: var(--font-serif);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.recharge-close {
+  font-family: var(--font-serif);
+  font-size: 18px;
+  line-height: 1;
+  color: var(--ink-muted);
+  padding: 2px 6px;
+  transition: color 0.15s ease;
+}
+
+.recharge-close:hover {
+  color: var(--cinnabar);
+}
+
+.recharge-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0;
+  border: 1px solid var(--ink);
+}
+
+.recharge-input {
+  padding: 10px 12px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 1px;
+  color: var(--ink);
+  background: var(--paper-sunken);
+  border-right: 1px solid var(--ink);
+  min-width: 0;
+}
+
+.recharge-input::placeholder {
+  color: var(--ink-subtle);
+  letter-spacing: 0.5px;
+}
+
+.recharge-submit {
+  padding: 10px 16px;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  transition: background 0.18s ease, color 0.18s ease;
+}
+
+.recharge-submit:hover:not(:disabled) {
+  background: var(--cinnabar);
+  color: var(--cinnabar-ink);
+}
+
+.recharge-submit:disabled {
+  background: var(--paper-raised);
+  color: var(--ink-subtle);
+  cursor: not-allowed;
+}
+
+.recharge-msg {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  padding: 4px 2px;
+}
+
+.recharge-msg-ok {
+  color: var(--cinnabar);
+}
+
+.recharge-msg-err {
+  color: var(--danger);
+}
+
 /* ========== Gallery ========== */
 
 .gallery-col {

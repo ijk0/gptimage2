@@ -22,6 +22,8 @@ local `.env.local` for development):
 | `IMAGE_API_KEY` | yes      | Bearer token for the API.                                                         |
 | `IMAGE_MODEL`   | no       | Model name. Defaults to `gpt-image-2`.                                            |
 | `FREE_LIMIT`    | no       | Max free generations per visitor (cookie-tracked). Defaults to `5`.               |
+| `RECHARGE_CODES`| no       | Comma-separated redemption codes. `WELCOME` uses `RECHARGE_AMOUNT`; `FRIEND:10` adds 10. Unset hides the redeem UI. |
+| `RECHARGE_AMOUNT`| no      | Default amount for codes without an explicit `:N` suffix. Defaults to `5`.        |
 
 The server calls `POST {IMAGE_API_URL}/images/generations` with a Bearer auth
 header and an OpenAI-shaped body (`model`, `prompt`, `n`, `size`, `quality`).
