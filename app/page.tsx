@@ -1,60 +1,31 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type Status = "idle" | "loading" | "error";
-
 type Quota = { limit: number; used: number; remaining: number; grant?: number };
-
 type RechargeState = "idle" | "submitting" | "ok" | "error";
-
 type MuseState = "idle" | "generating" | "error";
 
-const SCENARIOS: { label: string; seed: string }[] = [
-  { label: "风景", seed: "一处令人驻足的自然风景" },
-  { label: "人像", seed: "一张富有故事感的人物肖像" },
-  { label: "静物", seed: "一组富有诗意的静物组合" },
-  { label: "建筑", seed: "一处富有个性的建筑空间" },
-  { label: "抽象", seed: "一幅充满张力的抽象构图" },
-  { label: "科幻", seed: "一个未来感十足的科幻场景" },
-  { label: "童话", seed: "一个温柔奇妙的童话场景" },
-  { label: "电影", seed: "一帧极具氛围的电影剧照" },
-  { label: "时尚", seed: "一张高级时装大片" },
-  { label: "东方", seed: "一幅带有东方美学意蕴的画面" },
-];
-
-const DEFAULT_PROMPT =
-  "极简主义水墨山水画，远山云雾缭绕，一叶扁舟漂于湖面，留白充足，淡雅写意，柔和的东方美学";
-
-const PROMPT_PRESETS: { label: string; text: string }[] = [
-  {
-    label: "水墨山水",
-    text: "极简主义水墨山水画，远山云雾缭绕，一叶扁舟漂于湖面，留白充足，淡雅写意，柔和的东方美学",
-  },
-  {
-    label: "赛博雨夜",
-    text: "赛博朋克风格的雨夜街景，霓虹灯倒映在湿漉漉的街道上，远处高耸的摩天大楼与全息广告，电影级光影",
-  },
-  {
-    label: "童话月球",
-    text: "一只穿着宇航服的柴犬站在月球上仰望地球，温暖的童话书插画风格，柔和的水彩质感",
-  },
-  {
-    label: "极简静物",
-    text: "极简主义产品摄影：一只陶瓷咖啡杯置于米色背景上，柔和的侧光，干净的阴影，杂志封面般的留白",
-  },
-  {
-    label: "蒸汽机械",
-    text: "蒸汽朋克风格的机械怀表剖面图，黄铜齿轮与红色宝石，昏黄灯光，复古工业质感",
-  },
+const STYLES: { value: string; label: string }[] = [
+  { value: "", label: "无" },
+  { value: "水墨", label: "水墨" },
+  { value: "东方", label: "东方" },
+  { value: "极简", label: "极简" },
+  { value: "电影", label: "电影" },
+  { value: "时尚", label: "时尚" },
+  { value: "童话", label: "童话" },
+  { value: "赛博", label: "赛博" },
+  { value: "科幻", label: "科幻" },
+  { value: "蒸汽", label: "蒸汽" },
 ];
 
 const SIZES = [
-  { value: "auto", label: "自动" },
-  { value: "1024x1024", label: "方 · 1024" },
-  { value: "1536x1024", label: "横 · 1536" },
-  { value: "1024x1536", label: "竖 · 1536" },
-  { value: "2048x2048", label: "方 · 2048" },
+  { value: "auto", label: "自动", ratio: "1 / 1" },
+  { value: "1024x1024", label: "方 · 1024", ratio: "1 / 1" },
+  { value: "1536x1024", label: "横 · 1536", ratio: "3 / 2" },
+  { value: "1024x1536", label: "竖 · 1536", ratio: "2 / 3" },
+  { value: "2048x2048", label: "方 · 2048", ratio: "1 / 1" },
 ];
 
 const QUALITIES = [
@@ -109,28 +80,38 @@ function todayStamp(): string {
 }
 
 export default function Home() {
-  const [prompt, setPrompt] = useState(DEFAULT_PROMPT);
+  const [intent, setIntent] = useState("");
+  const [style, setStyle] = useState("");
+  const [prompt, setPrompt] = useState("");
+  const [promptOrigin, setPromptOrigin] = useState<"hand" | "muse" | "">("");
+  const [promptFresh, setPromptFresh] = useState(false);
+
   const [size, setSize] = useState("auto");
   const [quality, setQuality] = useState("auto");
   const [format, setFormat] = useState("png");
   const [n, setN] = useState(1);
+
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
   const [images, setImages] = useState<string[]>([]);
+
   const [quota, setQuota] = useState<Quota>({
     limit: 5,
     used: 0,
     remaining: 5,
   });
   const [stamp, setStamp] = useState("");
+
   const [rechargeEnabled, setRechargeEnabled] = useState(false);
   const [rechargeOpen, setRechargeOpen] = useState(false);
   const [rechargeCode, setRechargeCode] = useState("");
   const [rechargeState, setRechargeState] = useState<RechargeState>("idle");
   const [rechargeMsg, setRechargeMsg] = useState<string | null>(null);
+
   const [museState, setMuseState] = useState<MuseState>("idle");
-  const [museScenario, setMuseScenario] = useState<string>(SCENARIOS[0].label);
   const [museError, setMuseError] = useState<string | null>(null);
+
+  const promptRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     setStamp(todayStamp());
@@ -147,16 +128,14 @@ export default function Home() {
   }, []);
 
   async function onMuse() {
-    if (museState === "generating") return;
-    const scenario = SCENARIOS.find((s) => s.label === museScenario);
-    if (!scenario) return;
+    if (museState === "generating" || !intent.trim()) return;
     setMuseState("generating");
     setMuseError(null);
     try {
       const res = await fetch("/api/prompt", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ scenario: scenario.seed }),
+        body: JSON.stringify({ intent: intent.trim(), style }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -172,6 +151,10 @@ export default function Home() {
       }
       if (typeof data.prompt === "string" && data.prompt.trim()) {
         setPrompt(data.prompt.trim());
+        setPromptOrigin("muse");
+        setPromptFresh(true);
+        window.setTimeout(() => setPromptFresh(false), 1400);
+        promptRef.current?.focus({ preventScroll: true });
       }
       setMuseState("idle");
     } catch (err) {
@@ -212,6 +195,9 @@ export default function Home() {
   const quotaExhausted = quota.remaining <= 0;
   const disabled = status === "loading" || !prompt.trim() || quotaExhausted;
   const effectiveN = Math.min(n, Math.max(quota.remaining, 1));
+  const selectedSize = SIZES.find((s) => s.value === size) ?? SIZES[0];
+  const plateRatio =
+    selectedSize.value === "auto" ? "1 / 1" : selectedSize.ratio;
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -264,6 +250,15 @@ export default function Home() {
     }
   }
 
+  const styleObj = STYLES.find((s) => s.value === style);
+  const styleLabel = styleObj?.label ?? "无";
+  const promptOriginLabel =
+    promptOrigin === "muse"
+      ? `来自 · MUSE（${styleLabel}）`
+      : prompt
+        ? "手写 · HAND"
+        : "";
+
   return (
     <main className="shell">
       <header className="masthead">
@@ -283,102 +278,126 @@ export default function Home() {
         </div>
       </header>
 
-      <div className="stage">
-        <form className="spec" onSubmit={onSubmit}>
-          <div className="spec-heading">
-            <span className="spec-heading-title">创作工单</span>
-            <span className="spec-heading-no">Section I · Brief</span>
+      <form onSubmit={onSubmit}>
+        <section className="sec">
+          <div className="sec-head">
+            <span className="sec-title">创作工坊</span>
+            <span className="sec-no">Section I · Brief</span>
           </div>
 
-          <div className="muse">
-            <div className="muse-head">
-              <span className="muse-label">AI 构思 · Muse</span>
-              <span className="muse-model">gpt-5.4</span>
-            </div>
-            <div className="muse-chips" role="radiogroup" aria-label="主题">
-              {SCENARIOS.map((s) => (
-                <button
-                  key={s.label}
-                  type="button"
-                  role="radio"
-                  aria-checked={museScenario === s.label}
-                  className={`muse-chip${museScenario === s.label ? " is-on" : ""}`}
-                  onClick={() => setMuseScenario(s.label)}
-                  disabled={museState === "generating"}
-                >
-                  {s.label}
-                </button>
-              ))}
-            </div>
-            <button
-              type="button"
-              className="muse-action"
-              onClick={onMuse}
-              disabled={museState === "generating"}
-            >
-              {museState === "generating" ? (
-                <>
-                  <span className="spinner" aria-hidden />
-                  思考中…
-                </>
-              ) : (
-                <>
-                  <span aria-hidden>▸</span>
-                  <span>生成提示词</span>
-                </>
-              )}
-            </button>
-            {museError && museState === "error" && (
-              <div className="muse-error" role="alert">
-                {museError}
+          <div className="workbench">
+            <div className="intent-col">
+              <div className="intent-field">
+                <span className="micro-label">立意 · What do you want</span>
+                <input
+                  type="text"
+                  className="intent-input"
+                  value={intent}
+                  onChange={(e) => setIntent(e.target.value)}
+                  placeholder="一句话，例：一只戴围巾的柴犬坐在月球上"
+                  maxLength={120}
+                />
+                <span className="intent-hint">
+                  先写下你想看到的画面，再挑一个风格，MUSE 会替你写详细提示词。
+                </span>
               </div>
-            )}
-          </div>
 
-          <div className="prompt-block">
-            <span className="prompt-label">Prompt · 提示词</span>
-            <textarea
-              className="prompt-area"
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              placeholder="在此写下你想让它生成的画面…"
-            />
-            <div className="prompt-footer">
-              <span>{prompt.length} 字</span>
+              <div className="styles">
+                <span className="micro-label">风格 · Style · Optional</span>
+                <div className="style-row" role="radiogroup" aria-label="风格">
+                  {STYLES.map((s) => (
+                    <button
+                      key={s.value || "none"}
+                      type="button"
+                      role="radio"
+                      aria-checked={style === s.value}
+                      className={`style-chip${style === s.value ? " is-on" : ""}${s.value === "" ? " style-chip-none" : ""}`}
+                      onClick={() => setStyle(s.value)}
+                      disabled={museState === "generating"}
+                    >
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <button
                 type="button"
-                className="clear-btn"
-                onClick={() => setPrompt("")}
-                disabled={!prompt}
+                className="muse-action"
+                onClick={onMuse}
+                disabled={museState === "generating" || !intent.trim()}
               >
-                清空
+                {museState === "generating" ? (
+                  <>
+                    <span className="spinner" aria-hidden />
+                    思考中…
+                  </>
+                ) : (
+                  <>
+                    <span aria-hidden>▸</span>
+                    <span>生成提示词</span>
+                    <span className="muse-model">gpt-5.4</span>
+                  </>
+                )}
               </button>
+
+              {museError && museState === "error" && (
+                <div className="muse-error" role="alert">
+                  {museError}
+                </div>
+              )}
+            </div>
+
+            <div className="prompt-col">
+              <div className="prompt-head">
+                <span className="micro-label">提示词 · Prompt</span>
+                <span className="prompt-origin">
+                  {promptOriginLabel && (
+                    <span
+                      className={promptOrigin === "muse" ? "cinnabar" : ""}
+                    >
+                      {promptOriginLabel}
+                    </span>
+                  )}
+                </span>
+              </div>
+              <textarea
+                ref={promptRef}
+                className={`prompt-area${promptFresh ? " is-fresh" : ""}`}
+                value={prompt}
+                onChange={(e) => {
+                  setPrompt(e.target.value);
+                  if (promptOrigin !== "hand") setPromptOrigin("hand");
+                }}
+                placeholder="详细提示词将出现在这里，或你也可以直接在此落笔。"
+              />
+              <div className="prompt-foot">
+                <span>{prompt.length} 字</span>
+                <button
+                  type="button"
+                  className="clear-btn"
+                  onClick={() => {
+                    setPrompt("");
+                    setPromptOrigin("");
+                  }}
+                  disabled={!prompt}
+                >
+                  清空
+                </button>
+              </div>
             </div>
           </div>
+        </section>
 
-          <div className="presets">
-            <div className="presets-head">灵感选集 · Presets</div>
-            {PROMPT_PRESETS.map((p, i) => (
-              <button
-                key={p.label}
-                type="button"
-                className="preset-row"
-                onClick={() => setPrompt(p.text)}
-              >
-                <span className="preset-numeral">
-                  {toRoman(i + 1)}
-                </span>
-                <span className="preset-name">{p.label}</span>
-                <span className="preset-arrow" aria-hidden>
-                  →
-                </span>
-              </button>
-            ))}
+        <section className="sec">
+          <div className="sec-head">
+            <span className="sec-title">参数</span>
+            <span className="sec-no">Section II · Parameters</span>
           </div>
 
-          <div className="param-table" role="group" aria-label="参数">
-            <div className="param-row">
-              <span className="param-key">尺寸</span>
+          <div className="params-ribbon">
+            <label className="param-cell">
+              <span className="micro-label">尺寸</span>
               <select
                 className="param-select"
                 value={size}
@@ -390,9 +409,9 @@ export default function Home() {
                   </option>
                 ))}
               </select>
-            </div>
-            <div className="param-row">
-              <span className="param-key">质量</span>
+            </label>
+            <label className="param-cell">
+              <span className="micro-label">质量</span>
               <select
                 className="param-select"
                 value={quality}
@@ -404,9 +423,9 @@ export default function Home() {
                   </option>
                 ))}
               </select>
-            </div>
-            <div className="param-row">
-              <span className="param-key">格式</span>
+            </label>
+            <label className="param-cell">
+              <span className="micro-label">格式</span>
               <select
                 className="param-select"
                 value={format}
@@ -418,9 +437,9 @@ export default function Home() {
                   </option>
                 ))}
               </select>
-            </div>
-            <div className="param-row">
-              <span className="param-key">张数</span>
+            </label>
+            <label className="param-cell">
+              <span className="micro-label">张数</span>
               <select
                 className="param-select"
                 value={n}
@@ -432,9 +451,11 @@ export default function Home() {
                   </option>
                 ))}
               </select>
-            </div>
+            </label>
           </div>
+        </section>
 
+        <div className="actions">
           <button type="submit" className="press" disabled={disabled}>
             {status === "loading" ? (
               <>
@@ -469,9 +490,7 @@ export default function Home() {
                   className="recharge-toggle"
                   onClick={() => setRechargeOpen(true)}
                 >
-                  {quotaExhausted
-                    ? "输入兑换码继续 →"
-                    : "有兑换码？"}
+                  {quotaExhausted ? "输入兑换码继续 →" : "有兑换码？"}
                 </button>
               ) : (
                 <form className="recharge-form" onSubmit={onRecharge}>
@@ -522,75 +541,77 @@ export default function Home() {
               )}
             </div>
           )}
-        </form>
+        </div>
+      </form>
 
-        <section className="gallery-col" aria-live="polite">
-          <div className="gallery-head">
-            <span className="gallery-title">版面 · Plates</span>
-            <span className="gallery-meta">
-              {status === "loading"
-                ? `制版中 · 共 ${effectiveN} 版`
-                : images.length > 0
-                  ? `共 ${images.length} 版`
-                  : "等待落印"}
-            </span>
+      <section className="sec gallery-sec" aria-live="polite">
+        <div className="sec-head">
+          <span className="sec-title">版面</span>
+          <span className="gallery-meta">
+            {status === "loading"
+              ? `制版中 · 共 ${effectiveN} 版`
+              : images.length > 0
+                ? `Plates · ${images.length} 版`
+                : "Plates"}
+          </span>
+        </div>
+
+        {status === "loading" ? (
+          <div
+            className="plates"
+            style={{ ["--ratio" as string]: plateRatio }}
+          >
+            {Array.from({ length: effectiveN }).map((_, i) => (
+              <div key={i} className="plate">
+                <div
+                  className="skeleton-plate"
+                  style={{ ["--ratio" as string]: plateRatio }}
+                />
+                <div className="plate-caption">
+                  <span className="plate-numeral">Plate {toRoman(i + 1)}</span>
+                  <span>制版中…</span>
+                </div>
+              </div>
+            ))}
           </div>
-
-          {status === "loading" ? (
-            <div className="plates">
-              {Array.from({ length: effectiveN }).map((_, i) => (
-                <div key={i} className="plate">
-                  <div className="skeleton-plate" />
-                  <div className="plate-caption">
-                    <span className="plate-numeral">
-                      Plate {toRoman(i + 1)}
-                    </span>
-                    <span>制版中…</span>
+        ) : images.length > 0 ? (
+          <div
+            className="plates"
+            style={{ ["--ratio" as string]: plateRatio }}
+          >
+            {images.map((src, i) => (
+              <figure key={i} className="plate">
+                <div
+                  className="plate-frame"
+                  style={{ ["--ratio" as string]: plateRatio }}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={src} alt={`生成结果 ${i + 1}`} />
+                  <div className="plate-overlay">
+                    <a
+                      className="plate-download"
+                      href={src}
+                      download={`gpt-image-2-${Date.now()}-${i + 1}.${format}`}
+                    >
+                      下载 · Download
+                    </a>
                   </div>
                 </div>
-              ))}
-            </div>
-          ) : images.length > 0 ? (
-            <div className="plates">
-              {images.map((src, i) => (
-                <figure key={i} className="plate">
-                  <div className="plate-frame">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={src} alt={`生成结果 ${i + 1}`} />
-                    <div className="plate-overlay">
-                      <a
-                        className="plate-download"
-                        href={src}
-                        download={`gpt-image-2-${Date.now()}-${i + 1}.${format}`}
-                      >
-                        下载 · Download
-                      </a>
-                    </div>
-                  </div>
-                  <figcaption className="plate-caption">
-                    <span className="plate-numeral">
-                      Plate {toRoman(i + 1)}
-                    </span>
-                    <span>
-                      {size === "auto" ? "AUTO" : size} · {format.toUpperCase()}
-                    </span>
-                  </figcaption>
-                </figure>
-              ))}
-            </div>
-          ) : (
-            <div className="empty">
-              <div className="empty-mark" aria-hidden>
-                ¶
-              </div>
-              <div className="empty-title">此处尚无版面</div>
-              <div className="empty-hint">
-                填写工单，按下「落印」以生成第一张图
-              </div>
-            </div>
-          )}
-        </section>
-      </div>
+                <figcaption className="plate-caption">
+                  <span className="plate-numeral">Plate {toRoman(i + 1)}</span>
+                  <span>
+                    {size === "auto" ? "AUTO" : size} · {format.toUpperCase()}
+                  </span>
+                </figcaption>
+              </figure>
+            ))}
+          </div>
+        ) : (
+          <p className="empty-line">
+            尚无版面 —— 写下立意、按下落印，此处将呈现你的第一张图。
+          </p>
+        )}
+      </section>
 
       <footer className="colophon">
         <span>
