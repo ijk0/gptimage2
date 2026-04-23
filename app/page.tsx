@@ -282,7 +282,7 @@ export default function Home() {
         <section className="sec">
           <div className="sec-head">
             <span className="sec-title">创作工坊</span>
-            <span className="sec-no">Section I · Brief</span>
+            <span className="sec-no">— BRIEF</span>
           </div>
 
           <div className="workbench">
@@ -389,14 +389,9 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="sec">
-          <div className="sec-head">
-            <span className="sec-title">参数</span>
-            <span className="sec-no">Section II · Parameters</span>
-          </div>
-
-          <div className="params-ribbon">
-            <label className="param-cell">
+        <div className="commit-row">
+          <div className="params-strip" aria-label="生成参数">
+            <label className="param-inline">
               <span className="micro-label">尺寸</span>
               <select
                 className="param-select"
@@ -410,7 +405,7 @@ export default function Home() {
                 ))}
               </select>
             </label>
-            <label className="param-cell">
+            <label className="param-inline">
               <span className="micro-label">质量</span>
               <select
                 className="param-select"
@@ -424,7 +419,7 @@ export default function Home() {
                 ))}
               </select>
             </label>
-            <label className="param-cell">
+            <label className="param-inline">
               <span className="micro-label">格式</span>
               <select
                 className="param-select"
@@ -438,7 +433,7 @@ export default function Home() {
                 ))}
               </select>
             </label>
-            <label className="param-cell">
+            <label className="param-inline">
               <span className="micro-label">张数</span>
               <select
                 className="param-select"
@@ -453,9 +448,7 @@ export default function Home() {
               </select>
             </label>
           </div>
-        </section>
 
-        <div className="actions">
           <button type="submit" className="press" disabled={disabled}>
             {status === "loading" ? (
               <>
@@ -472,7 +465,9 @@ export default function Home() {
               </>
             )}
           </button>
+        </div>
 
+        <div className="side-notes">
           {error && (
             <div
               className={`error${quotaExhausted ? " quota-exhausted" : ""}`}

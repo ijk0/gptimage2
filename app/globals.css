@@ -495,41 +495,65 @@ a {
   color: var(--danger);
 }
 
-/* ========== Parameter ribbon ========== */
+/* ========== Commit row (inline params + press) ========== */
 
-.params-ribbon {
+.commit-row {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 0;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: stretch;
+  margin-top: var(--space-xl);
   border-top: 1px solid var(--ink);
   border-bottom: 1px solid var(--ink);
 }
 
-@media (max-width: 640px) {
-  .params-ribbon {
+@media (max-width: 880px) {
+  .commit-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.params-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+@media (max-width: 520px) {
+  .params-strip {
     grid-template-columns: repeat(2, 1fr);
   }
 }
 
-.param-cell {
-  display: grid;
-  gap: 4px;
-  padding: 14px 18px;
+.param-inline {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 10px 16px;
+  border-right: 1px solid var(--rule);
+  min-width: 0;
+}
+
+.param-inline:last-child {
   border-right: 1px solid var(--rule);
 }
 
-.param-cell:last-child {
-  border-right: none;
-}
-
-@media (max-width: 640px) {
-  .param-cell:nth-child(2) {
+@media (max-width: 880px) {
+  .param-inline:last-child {
     border-right: none;
   }
-  .param-cell:nth-child(1),
-  .param-cell:nth-child(2) {
+}
+
+@media (max-width: 520px) {
+  .param-inline:nth-child(2n) {
+    border-right: none;
+  }
+  .param-inline:nth-child(-n + 2) {
     border-bottom: 1px solid var(--rule);
   }
+}
+
+.param-inline .micro-label {
+  font-size: 10px;
+  white-space: nowrap;
 }
 
 .param-select {
@@ -563,18 +587,17 @@ a {
   font-family: var(--font-sans);
 }
 
-/* ========== Actions (press button + error + recharge) ========== */
+/* ========== Actions ========== */
 
-.actions {
+.side-notes {
   display: grid;
-  gap: var(--space-md);
-  margin-top: var(--space-2xl);
+  gap: var(--space-sm);
+  margin-top: var(--space-md);
 }
 
 .press {
-  justify-self: start;
   padding: 14px 28px;
-  min-width: 240px;
+  min-width: 220px;
   background: var(--ink);
   color: var(--paper);
   font-family: var(--font-sans);
@@ -586,10 +609,19 @@ a {
   align-items: center;
   justify-content: center;
   gap: 10px;
+  border-left: 1px solid var(--ink);
   transition:
     background 0.18s var(--ease-out),
     color 0.18s var(--ease-out),
     transform 0.08s ease;
+}
+
+@media (max-width: 880px) {
+  .press {
+    width: 100%;
+    border-left: none;
+    border-top: 1px solid var(--ink);
+  }
 }
 
 .press:hover:not(:disabled) {
@@ -779,7 +811,7 @@ a {
 /* ========== Gallery ========== */
 
 .gallery-sec {
-  margin-top: var(--space-3xl);
+  margin-top: var(--space-2xl);
 }
 
 .gallery-meta {
@@ -792,8 +824,14 @@ a {
 
 .plates {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: var(--space-lg);
+  grid-template-columns: repeat(auto-fill, minmax(min(420px, 100%), 1fr));
+  gap: var(--space-xl);
+}
+
+@media (min-width: 1100px) {
+  .plates:has(> :nth-child(3)) {
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  }
 }
 
 .plate {
