@@ -206,6 +206,48 @@ a {
   font-weight: 500;
 }
 
+.mast-quota {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.mast-redeem {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border: 1px solid var(--cinnabar);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--cinnabar);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.mast-redeem:hover {
+  background: var(--cinnabar);
+  color: var(--cinnabar-ink);
+}
+
+.mast-redeem.is-urgent {
+  background: var(--cinnabar);
+  color: var(--cinnabar-ink);
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--cinnabar) 20%, transparent);
+}
+
+.mast-redeem.is-urgent:hover {
+  filter: brightness(1.05);
+}
+
 .mast-auth {
   display: inline-flex;
   align-items: center;

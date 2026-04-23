@@ -1073,9 +1073,20 @@ export default function Home() {
         </div>
         <div className="mast-meta">
           <span>No. 0001 · {stamp}</span>
-          <span>
-            可用次数 <span className="cinnabar">{quota.remaining}</span> /{" "}
-            {quota.limit}
+          <span className="mast-quota">
+            <span className="mast-quota__label">
+              可用次数 <span className="cinnabar">{quota.remaining}</span> /{" "}
+              {quota.limit}
+            </span>
+            {rechargeEnabled && !rechargeOpen && (
+              <button
+                type="button"
+                className={`mast-redeem${quotaExhausted ? " is-urgent" : ""}`}
+                onClick={() => setRechargeOpen(true)}
+              >
+                {quotaExhausted ? "兑换 →" : "兑换"}
+              </button>
+            )}
           </span>
           {authEnabled ? (
             <span className="mast-auth">
@@ -1572,18 +1583,9 @@ export default function Home() {
             </div>
           )}
 
-          {rechargeEnabled && (
+          {rechargeEnabled && rechargeOpen && (
             <div className="recharge">
-              {!rechargeOpen ? (
-                <button
-                  type="button"
-                  className="recharge-toggle"
-                  onClick={() => setRechargeOpen(true)}
-                >
-                  {quotaExhausted ? "输入兑换码继续 →" : "有兑换码？"}
-                </button>
-              ) : (
-                <form className="recharge-form" onSubmit={onRecharge}>
+              <form className="recharge-form" onSubmit={onRecharge}>
                   <div className="recharge-head">
                     <span className="recharge-title">兑换次数 · Redeem</span>
                     <button
@@ -1628,7 +1630,6 @@ export default function Home() {
                     </div>
                   )}
                 </form>
-              )}
             </div>
           )}
       </div>
