@@ -1056,3 +1056,257 @@ a {
 .colophon-seal {
   color: var(--cinnabar);
 }
+
+/* ========== Mode tabs (Generate / Edit) ========== */
+
+.mode-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin-bottom: var(--space-xl);
+  border: 1px solid var(--ink);
+  background: var(--paper-sunken);
+}
+
+.mode-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 14px 20px;
+  text-align: left;
+  background: transparent;
+  color: var(--ink-muted);
+  transition:
+    background 0.18s var(--ease-out),
+    color 0.18s var(--ease-out);
+  border-right: 1px solid var(--rule);
+}
+
+.mode-tab:last-child {
+  border-right: none;
+}
+
+.mode-tab:hover:not(.is-on) {
+  color: var(--ink);
+  background: var(--paper);
+}
+
+.mode-tab.is-on {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.mode-tab-label {
+  font-family: var(--font-serif);
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: -0.1px;
+}
+
+.mode-tab.is-on .mode-tab-label {
+  color: var(--paper);
+}
+
+.mode-tab-hint {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+
+/* ========== Edit drop zone ========== */
+
+.drop-zone {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 260px;
+  padding: var(--space-lg);
+  border: 1.5px dashed var(--rule-strong);
+  background: var(--paper-sunken);
+  cursor: pointer;
+  transition:
+    border-color 0.18s var(--ease-out),
+    background 0.18s var(--ease-out);
+}
+
+.drop-zone:hover:not(.has-image) {
+  border-color: var(--ink);
+  background: var(--paper);
+}
+
+.drop-zone.is-drag {
+  border-color: var(--cinnabar);
+  background: color-mix(in oklch, var(--cinnabar) 6%, var(--paper));
+}
+
+.drop-zone.has-image {
+  cursor: default;
+  border-style: solid;
+  border-color: var(--ink);
+  padding: var(--space-md);
+  background: var(--paper);
+}
+
+.drop-icon {
+  font-family: var(--font-serif);
+  font-size: 36px;
+  color: var(--ink-muted);
+  line-height: 1;
+}
+
+.drop-title {
+  font-family: var(--font-serif);
+  font-size: 16px;
+  color: var(--ink);
+}
+
+.drop-hint {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.4px;
+  color: var(--ink-subtle);
+}
+
+.drop-preview {
+  max-width: 100%;
+  max-height: 320px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border: 1px solid var(--rule);
+  background: var(--paper-sunken);
+}
+
+.drop-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  width: 100%;
+  gap: var(--space-md);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-muted);
+  letter-spacing: 0.3px;
+  padding-top: 4px;
+}
+
+.drop-filename {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 70%;
+}
+
+.drop-actions {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  padding-top: 4px;
+}
+
+.drop-btn {
+  flex: 1;
+  padding: 8px 12px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  letter-spacing: 0.4px;
+  color: var(--paper);
+  background: var(--ink);
+  border: 1px solid var(--ink);
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.drop-btn:hover {
+  background: var(--cinnabar);
+  border-color: var(--cinnabar);
+  color: var(--cinnabar-ink);
+}
+
+.drop-btn-ghost {
+  color: var(--ink);
+  background: transparent;
+}
+
+.drop-btn-ghost:hover {
+  background: var(--paper-sunken);
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+/* ========== Fidelity toggle ========== */
+
+.fidelity-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--rule);
+  background: var(--paper-sunken);
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.fidelity-row:hover {
+  border-color: var(--ink);
+}
+
+.fidelity-row input[type="checkbox"] {
+  margin-top: 3px;
+  width: 14px;
+  height: 14px;
+  accent-color: var(--cinnabar);
+  cursor: pointer;
+}
+
+.fidelity-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.fidelity-main {
+  font-family: var(--font-serif);
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.fidelity-hint {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.4px;
+  color: var(--ink-subtle);
+}
+
+/* ========== Edit presets ========== */
+
+.edit-preset-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex: 1;
+}
+
+.edit-preset-chip {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  letter-spacing: 0.3px;
+  padding: 4px 10px;
+  border: 1px solid var(--rule);
+  color: var(--ink-muted);
+  background: var(--paper);
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.edit-preset-chip:hover {
+  color: var(--cinnabar);
+  border-color: var(--cinnabar);
+}

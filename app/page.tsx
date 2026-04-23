@@ -6,6 +6,7 @@ type Status = "idle" | "loading" | "error";
 type Quota = { limit: number; used: number; remaining: number; grant?: number };
 type RechargeState = "idle" | "submitting" | "ok" | "error";
 type MuseState = "idle" | "generating" | "error";
+type Mode = "generate" | "edit";
 
 // Presets grouped by job-to-be-done, informed by cross-app category analysis
 // (Midjourney, Ideogram, Canva Magic Media, Recraft, Adobe Firefly Boards,
@@ -357,6 +358,26 @@ const FORMATS = [
 
 const COUNTS = [1, 2, 3, 4];
 
+const EDIT_PRESETS: { label: string; text: string }[] = [
+  {
+    label: "背景换场",
+    text: "把背景换成一片柔和的晨雾山景，保留主体轮廓与色调",
+  },
+  {
+    label: "风格化",
+    text: "转成水彩手绘风，保留构图与主要细节，笔触松散温柔",
+  },
+  {
+    label: "补元素",
+    text: "在画面右下角加入一只安静趴着的小橘猫，毛发细腻、光线一致",
+  },
+  { label: "色彩调校", text: "把整体色调调成莫兰迪灰绿，降低饱和，保留结构" },
+  { label: "清理杂物", text: "移除画面中所有杂乱物品，保持构图干净整洁" },
+  { label: "季节切换", text: "把场景换成冬季，加入轻柔雪花与冷色调光线" },
+];
+
+const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
+
 function toRoman(num: number): string {
   if (num <= 0 || num > 3999) return String(num);
   const values: [number, string][] = [
@@ -385,6 +406,12 @@ function toRoman(num: number): string {
   return out;
 }
 
+function prettyBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
 // Tolerant JSON parser for fetch responses. If the server (or a proxy /
 // dev-server error page in between) returned HTML instead of JSON, surface a
 // clean Chinese error rather than the raw "Unexpected token '<'" exception.
@@ -409,6 +436,8 @@ function todayStamp(): string {
 }
 
 export default function Home() {
+  const [mode, setMode] = useState<Mode>("generate");
+
   const [intent, setIntent] = useState("");
   const [style, setStyle] = useState("");
   const [prompt, setPrompt] = useState("");
@@ -423,6 +452,14 @@ export default function Home() {
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
   const [images, setImages] = useState<string[]>([]);
+
+  // Edit-mode state
+  const [editFile, setEditFile] = useState<File | null>(null);
+  const [editPreview, setEditPreview] = useState<string | null>(null);
+  const [editInstruction, setEditInstruction] = useState("");
+  const [inputFidelity, setInputFidelity] = useState(true);
+  const [dragOver, setDragOver] = useState(false);
+  const editFileInputRef = useRef<HTMLInputElement>(null);
 
   const [quota, setQuota] = useState<Quota>({
     limit: 5,
@@ -464,6 +501,42 @@ export default function Home() {
       }
     })();
   }, []);
+
+  // Revoke object URL when preview changes / component unmounts.
+  useEffect(() => {
+    if (!editPreview) return;
+    return () => {
+      URL.revokeObjectURL(editPreview);
+    };
+  }, [editPreview]);
+
+  function applyEditFile(file: File | null) {
+    if (!file) {
+      setEditFile(null);
+      setEditPreview((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return null;
+      });
+      return;
+    }
+    if (!file.type.startsWith("image/")) {
+      setError("仅支持图片文件（PNG / JPEG / WEBP）");
+      setStatus("error");
+      return;
+    }
+    if (file.size > MAX_UPLOAD_BYTES) {
+      setError(`图片过大（上限 ${MAX_UPLOAD_BYTES / 1024 / 1024}MB）`);
+      setStatus("error");
+      return;
+    }
+    setEditFile(file);
+    setEditPreview((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return URL.createObjectURL(file);
+    });
+    setError(null);
+    setStatus("idle");
+  }
 
   async function onMuse() {
     if (museState === "generating" || !intent.trim()) return;
@@ -533,7 +606,16 @@ export default function Home() {
   }
 
   const quotaExhausted = quota.remaining <= 0;
-  const disabled = status === "loading" || !prompt.trim() || quotaExhausted;
+
+  const generateDisabled =
+    status === "loading" || !prompt.trim() || quotaExhausted;
+  const editDisabled =
+    status === "loading" ||
+    !editFile ||
+    !editInstruction.trim() ||
+    quotaExhausted;
+  const disabled = mode === "generate" ? generateDisabled : editDisabled;
+
   const effectiveN = Math.min(n, Math.max(quota.remaining, 1));
   const selectedSize = SIZES.find((s) => s.value === size) ?? SIZES[0];
   const plateRatio =
@@ -551,17 +633,30 @@ export default function Home() {
       });
     });
     try {
-      const res = await fetch("/api/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt,
-          size,
-          quality,
-          n,
-          output_format: format,
-        }),
-      });
+      const res =
+        mode === "generate"
+          ? await fetch("/api/generate", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                prompt,
+                size,
+                quality,
+                n,
+                output_format: format,
+              }),
+            })
+          : await (async () => {
+              const body = new FormData();
+              body.set("prompt", editInstruction);
+              body.set("size", size);
+              body.set("quality", quality);
+              body.set("n", String(n));
+              body.set("output_format", format);
+              if (inputFidelity) body.set("input_fidelity", "high");
+              body.set("image", editFile as File, (editFile as File).name);
+              return fetch("/api/edit", { method: "POST", body });
+            })();
       const data = await safeJson(res);
       if (!res.ok) {
         if (res.status === 429 && typeof data?.limit === "number") {
@@ -626,149 +721,324 @@ export default function Home() {
         </div>
       </header>
 
+      <div className="mode-tabs" role="tablist" aria-label="模式">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mode === "generate"}
+          className={`mode-tab${mode === "generate" ? " is-on" : ""}`}
+          onClick={() => setMode("generate")}
+        >
+          <span className="mode-tab-label">生成 · Generate</span>
+          <span className="mode-tab-hint">从文字落笔</span>
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mode === "edit"}
+          className={`mode-tab${mode === "edit" ? " is-on" : ""}`}
+          onClick={() => setMode("edit")}
+        >
+          <span className="mode-tab-label">编辑 · Edit</span>
+          <span className="mode-tab-hint">在已有图像上改写</span>
+        </button>
+      </div>
+
       <form onSubmit={onSubmit}>
-        <section className="sec">
-          <div className="sec-head">
-            <span className="sec-title">创作工坊</span>
-            <span className="sec-no">— BRIEF</span>
-          </div>
-
-          <div className="workbench">
-            <div className="intent-col">
-              <div className="intent-field">
-                <div className="intent-head">
-                  <span className="micro-label">立意 · What do you want</span>
-                  <span className="intent-count">{intent.length} / 600</span>
-                </div>
-                <textarea
-                  className="intent-input"
-                  value={intent}
-                  onChange={(e) => setIntent(e.target.value)}
-                  placeholder="写下你想看到的画面，一句或一段都好。&#10;例：一只戴围巾的柴犬坐在月球上，背后地球正在升起，胶片颗粒。"
-                  rows={4}
-                  maxLength={600}
-                />
-                <span className="intent-hint">
-                  先写下你想看到的画面，再挑一个风格，MUSE 会替你写详细提示词。
-                </span>
-                <div className="tpl-field">
-                  <span className="micro-label">题材模板 · Preset</span>
-                  <select
-                    className="tpl-select"
-                    value=""
-                    onChange={(e) => {
-                      const label = e.target.value;
-                      if (!label) return;
-                      const hit = PRESETS.flatMap((g) => g.items).find(
-                        (t) => t.label === label,
-                      );
-                      if (hit) {
-                        setIntent(hit.text);
-                        if (hit.size) setSize(hit.size);
-                      }
-                      e.target.value = "";
-                    }}
-                  >
-                    <option value="">— 选一个日常题材开始 —</option>
-                    {PRESETS.map((group) => (
-                      <optgroup key={group.group} label={group.group}>
-                        {group.items.map((t) => (
-                          <option key={t.label} value={t.label}>
-                            {t.label}
-                          </option>
-                        ))}
-                      </optgroup>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="styles">
-                <span className="micro-label">风格 · Style · Optional</span>
-                <div className="style-row" role="radiogroup" aria-label="风格">
-                  {STYLES.map((s) => (
-                    <button
-                      key={s.value || "none"}
-                      type="button"
-                      role="radio"
-                      aria-checked={style === s.value}
-                      className={`style-chip${style === s.value ? " is-on" : ""}${s.value === "" ? " style-chip-none" : ""}`}
-                      onClick={() => setStyle(s.value)}
-                      disabled={museState === "generating"}
-                    >
-                      {s.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <button
-                type="button"
-                className="muse-action"
-                onClick={onMuse}
-                disabled={museState === "generating" || !intent.trim()}
-              >
-                {museState === "generating" ? (
-                  <>
-                    <span className="spinner" aria-hidden />
-                    思考中…
-                  </>
-                ) : (
-                  <>
-                    <span aria-hidden>▸</span>
-                    <span>生成提示词</span>
-                    <span className="muse-model">gpt-5.4</span>
-                  </>
-                )}
-              </button>
-
-              {museError && museState === "error" && (
-                <div className="muse-error" role="alert">
-                  {museError}
-                </div>
-              )}
+        {mode === "generate" ? (
+          <section className="sec">
+            <div className="sec-head">
+              <span className="sec-title">创作工坊</span>
+              <span className="sec-no">— BRIEF</span>
             </div>
 
-            <div className="prompt-col">
-              <div className="prompt-head">
-                <span className="micro-label">提示词 · Prompt</span>
-                <span className="prompt-origin">
-                  {promptOriginLabel && (
-                    <span
-                      className={promptOrigin === "muse" ? "cinnabar" : ""}
+            <div className="workbench">
+              <div className="intent-col">
+                <div className="intent-field">
+                  <div className="intent-head">
+                    <span className="micro-label">立意 · What do you want</span>
+                    <span className="intent-count">{intent.length} / 600</span>
+                  </div>
+                  <textarea
+                    className="intent-input"
+                    value={intent}
+                    onChange={(e) => setIntent(e.target.value)}
+                    placeholder="写下你想看到的画面，一句或一段都好。&#10;例：一只戴围巾的柴犬坐在月球上，背后地球正在升起，胶片颗粒。"
+                    rows={4}
+                    maxLength={600}
+                  />
+                  <span className="intent-hint">
+                    先写下你想看到的画面，再挑一个风格，MUSE 会替你写详细提示词。
+                  </span>
+                  <div className="tpl-field">
+                    <span className="micro-label">题材模板 · Preset</span>
+                    <select
+                      className="tpl-select"
+                      value=""
+                      onChange={(e) => {
+                        const label = e.target.value;
+                        if (!label) return;
+                        const hit = PRESETS.flatMap((g) => g.items).find(
+                          (t) => t.label === label,
+                        );
+                        if (hit) {
+                          setIntent(hit.text);
+                          if (hit.size) setSize(hit.size);
+                        }
+                        e.target.value = "";
+                      }}
                     >
-                      {promptOriginLabel}
-                    </span>
-                  )}
-                </span>
-              </div>
-              <textarea
-                ref={promptRef}
-                className={`prompt-area${promptFresh ? " is-fresh" : ""}`}
-                value={prompt}
-                onChange={(e) => {
-                  setPrompt(e.target.value);
-                  if (promptOrigin !== "hand") setPromptOrigin("hand");
-                }}
-                placeholder="详细提示词将出现在这里，或你也可以直接在此落笔。"
-              />
-              <div className="prompt-foot">
-                <span>{prompt.length} 字</span>
+                      <option value="">— 选一个日常题材开始 —</option>
+                      {PRESETS.map((group) => (
+                        <optgroup key={group.group} label={group.group}>
+                          {group.items.map((t) => (
+                            <option key={t.label} value={t.label}>
+                              {t.label}
+                            </option>
+                          ))}
+                        </optgroup>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="styles">
+                  <span className="micro-label">风格 · Style · Optional</span>
+                  <div className="style-row" role="radiogroup" aria-label="风格">
+                    {STYLES.map((s) => (
+                      <button
+                        key={s.value || "none"}
+                        type="button"
+                        role="radio"
+                        aria-checked={style === s.value}
+                        className={`style-chip${style === s.value ? " is-on" : ""}${s.value === "" ? " style-chip-none" : ""}`}
+                        onClick={() => setStyle(s.value)}
+                        disabled={museState === "generating"}
+                      >
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <button
                   type="button"
-                  className="clear-btn"
-                  onClick={() => {
-                    setPrompt("");
-                    setPromptOrigin("");
-                  }}
-                  disabled={!prompt}
+                  className="muse-action"
+                  onClick={onMuse}
+                  disabled={museState === "generating" || !intent.trim()}
                 >
-                  清空
+                  {museState === "generating" ? (
+                    <>
+                      <span className="spinner" aria-hidden />
+                      思考中…
+                    </>
+                  ) : (
+                    <>
+                      <span aria-hidden>▸</span>
+                      <span>生成提示词</span>
+                      <span className="muse-model">gpt-5.4</span>
+                    </>
+                  )}
                 </button>
+
+                {museError && museState === "error" && (
+                  <div className="muse-error" role="alert">
+                    {museError}
+                  </div>
+                )}
+              </div>
+
+              <div className="prompt-col">
+                <div className="prompt-head">
+                  <span className="micro-label">提示词 · Prompt</span>
+                  <span className="prompt-origin">
+                    {promptOriginLabel && (
+                      <span
+                        className={promptOrigin === "muse" ? "cinnabar" : ""}
+                      >
+                        {promptOriginLabel}
+                      </span>
+                    )}
+                  </span>
+                </div>
+                <textarea
+                  ref={promptRef}
+                  className={`prompt-area${promptFresh ? " is-fresh" : ""}`}
+                  value={prompt}
+                  onChange={(e) => {
+                    setPrompt(e.target.value);
+                    if (promptOrigin !== "hand") setPromptOrigin("hand");
+                  }}
+                  placeholder="详细提示词将出现在这里，或你也可以直接在此落笔。"
+                />
+                <div className="prompt-foot">
+                  <span>{prompt.length} 字</span>
+                  <button
+                    type="button"
+                    className="clear-btn"
+                    onClick={() => {
+                      setPrompt("");
+                      setPromptOrigin("");
+                    }}
+                    disabled={!prompt}
+                  >
+                    清空
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        </section>
+          </section>
+        ) : (
+          <section className="sec">
+            <div className="sec-head">
+              <span className="sec-title">编辑工坊</span>
+              <span className="sec-no">— EDIT</span>
+            </div>
+
+            <div className="workbench">
+              <div className="intent-col">
+                <span className="micro-label">原图 · Source image</span>
+                <div
+                  className={`drop-zone${editPreview ? " has-image" : ""}${dragOver ? " is-drag" : ""}`}
+                  onClick={() => {
+                    if (!editPreview) editFileInputRef.current?.click();
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setDragOver(true);
+                  }}
+                  onDragLeave={() => setDragOver(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setDragOver(false);
+                    const file = e.dataTransfer.files?.[0];
+                    if (file) applyEditFile(file);
+                  }}
+                  role={editPreview ? undefined : "button"}
+                  tabIndex={editPreview ? -1 : 0}
+                  onKeyDown={(e) => {
+                    if (
+                      !editPreview &&
+                      (e.key === "Enter" || e.key === " ")
+                    ) {
+                      e.preventDefault();
+                      editFileInputRef.current?.click();
+                    }
+                  }}
+                >
+                  {editPreview ? (
+                    <>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={editPreview}
+                        alt="已选原图"
+                        className="drop-preview"
+                      />
+                      <div className="drop-meta">
+                        <span className="drop-filename">
+                          {editFile?.name ?? ""}
+                        </span>
+                        <span className="drop-filesize">
+                          {editFile ? prettyBytes(editFile.size) : ""}
+                        </span>
+                      </div>
+                      <div className="drop-actions">
+                        <button
+                          type="button"
+                          className="drop-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            editFileInputRef.current?.click();
+                          }}
+                        >
+                          换一张
+                        </button>
+                        <button
+                          type="button"
+                          className="drop-btn drop-btn-ghost"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            applyEditFile(null);
+                          }}
+                        >
+                          移除
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <span className="drop-icon" aria-hidden>
+                        ⇪
+                      </span>
+                      <span className="drop-title">拖入图片，或点击选择</span>
+                      <span className="drop-hint">
+                        支持 PNG / JPEG / WEBP · 最大 25 MB
+                      </span>
+                    </>
+                  )}
+                  <input
+                    ref={editFileInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    style={{ display: "none" }}
+                    onChange={(e) => applyEditFile(e.target.files?.[0] ?? null)}
+                  />
+                </div>
+
+                <label className="fidelity-row">
+                  <input
+                    type="checkbox"
+                    checked={inputFidelity}
+                    onChange={(e) => setInputFidelity(e.target.checked)}
+                  />
+                  <span className="fidelity-label">
+                    <span className="fidelity-main">保留原图质感</span>
+                    <span className="fidelity-hint">
+                      input_fidelity=high · 适合人像 / 品牌 / 质感敏感场景
+                    </span>
+                  </span>
+                </label>
+              </div>
+
+              <div className="prompt-col">
+                <div className="prompt-head">
+                  <span className="micro-label">编辑指令 · Instruction</span>
+                  <span className="prompt-origin">
+                    {editInstruction ? `${editInstruction.length} 字` : ""}
+                  </span>
+                </div>
+                <textarea
+                  className="prompt-area"
+                  value={editInstruction}
+                  onChange={(e) => setEditInstruction(e.target.value)}
+                  placeholder="例：把背景换成晨雾山景，保留主体轮廓与色调；或：在画面右下角加入一只安静趴着的小橘猫。"
+                />
+                <div className="prompt-foot">
+                  <div className="edit-preset-row">
+                    {EDIT_PRESETS.map((p) => (
+                      <button
+                        key={p.label}
+                        type="button"
+                        className="edit-preset-chip"
+                        onClick={() => setEditInstruction(p.text)}
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    className="clear-btn"
+                    onClick={() => setEditInstruction("")}
+                    disabled={!editInstruction}
+                  >
+                    清空
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
 
         <div className="commit-row">
           <div className="params-strip" aria-label="生成参数">
@@ -834,15 +1104,21 @@ export default function Home() {
             {status === "loading" ? (
               <>
                 <span className="spinner" aria-hidden />
-                制版中
+                {mode === "generate" ? "制版中" : "重绘中"}
               </>
             ) : quotaExhausted ? (
               "额度用尽"
-            ) : (
+            ) : mode === "generate" ? (
               <>
                 <span>落 印</span>
                 <span className="press-dash">·</span>
                 <span>生成图像</span>
+              </>
+            ) : (
+              <>
+                <span>落 印</span>
+                <span className="press-dash">·</span>
+                <span>重绘图像</span>
               </>
             )}
           </button>
@@ -929,7 +1205,7 @@ export default function Home() {
           <span className="sec-title">版面</span>
           <span className="gallery-meta">
             {status === "loading"
-              ? `制版中 · 共 ${effectiveN} 版`
+              ? `${mode === "generate" ? "制版中" : "重绘中"} · 共 ${effectiveN} 版`
               : images.length > 0
                 ? `Plates · ${images.length} 版`
                 : "Plates"}
@@ -949,7 +1225,7 @@ export default function Home() {
                 />
                 <div className="plate-caption">
                   <span className="plate-numeral">Plate {toRoman(i + 1)}</span>
-                  <span>制版中…</span>
+                  <span>{mode === "generate" ? "制版中…" : "重绘中…"}</span>
                 </div>
               </div>
             ))}
@@ -982,7 +1258,9 @@ export default function Home() {
           </div>
         ) : (
           <p className="empty-line">
-            尚无版面 —— 写下立意、按下落印，此处将呈现你的第一张图。
+            {mode === "generate"
+              ? "尚无版面 —— 写下立意、按下落印，此处将呈现你的第一张图。"
+              : "尚无版面 —— 上传一张图、写下编辑指令，按下落印，此处将呈现新版。"}
           </p>
         )}
       </section>
