@@ -1625,3 +1625,36 @@ a {
   color: var(--ink-subtle);
   border: 1px solid var(--rule-strong);
 }
+.admin__badge--repeat {
+  color: var(--ink);
+  border: 1px solid var(--ink);
+}
+.admin__badge--once {
+  color: var(--ink-muted);
+  border: 1px solid var(--rule);
+}
+.admin__field--check {
+  min-width: 180px;
+  justify-content: flex-end;
+}
+.admin__check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--ink);
+  letter-spacing: 0;
+  text-transform: none;
+  cursor: pointer;
+}
+.admin__check input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--cinnabar);
+}
+.admin__field-hint {
+  font-size: 11px;
+  color: var(--ink-subtle);
+  letter-spacing: 0.3px;
+}

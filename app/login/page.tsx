@@ -41,7 +41,7 @@ export default async function LoginPage({
       <div className="admin__shell admin__shell--narrow">
         <h1 className="admin__title">账号登录 / 注册</h1>
         <p className="admin__subtitle">
-          登录后，免费额度与兑换记录将随账号同步，可在不同设备使用。
+          登录后，兑换的次数将随账号同步，可在不同设备使用。
         </p>
         <AuthForm initialMode={initialMode} />
       </div>

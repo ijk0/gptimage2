@@ -60,7 +60,10 @@ async function handlePost(req: Request) {
   if (quota.remaining <= 0) {
     return NextResponse.json(
       {
-        error: `免费额度已用完（${quota.limit} 张）。可使用兑换码继续生成。`,
+        error:
+          quota.limit === 0
+            ? "暂无可用次数。请输入兑换码解锁生成。"
+            : `可用次数已用完（${quota.limit} 张）。可使用兑换码继续生成。`,
         limit: quota.limit,
         used: quota.used,
         grant: quota.grant,

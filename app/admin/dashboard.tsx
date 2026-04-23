@@ -6,9 +6,11 @@ import { useMemo, useState, useTransition } from "react";
 type RedeemCode = {
   code: string;
   amount: number;
+  repeatable: boolean;
   createdAt: string;
   redeemed: boolean;
   redeemedAt?: string;
+  redeemedCount: number;
 };
 
 function formatDate(iso: string): string {
@@ -34,6 +36,7 @@ export function AdminDashboard({
   const [codes, setCodes] = useState<RedeemCode[]>(initialCodes);
   const [code, setCode] = useState("");
   const [amount, setAmount] = useState("10");
+  const [repeatable, setRepeatable] = useState(false);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -42,7 +45,9 @@ export function AdminDashboard({
 
   const stats = useMemo(() => {
     const total = codes.length;
-    const used = codes.filter((c) => c.redeemed).length;
+    // "Used" = one-time codes that were consumed. Repeatable codes stay
+    // available as long as they exist, regardless of redemption count.
+    const used = codes.filter((c) => !c.repeatable && c.redeemed).length;
     const totalAmount = codes.reduce((sum, c) => sum + c.amount, 0);
     return { total, used, available: total - used, totalAmount };
   }, [codes]);
@@ -64,7 +69,7 @@ export function AdminDashboard({
       const res = await fetch("/api/admin/codes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code, amount: Number(amount) }),
+        body: JSON.stringify({ code, amount: Number(amount), repeatable }),
       });
       if (!res.ok) {
         const data = (await res.json().catch(() => ({}))) as { error?: string };
@@ -73,7 +78,10 @@ export function AdminDashboard({
       }
       const data = (await res.json()) as { code: RedeemCode };
       setCodes((prev) => [data.code, ...prev]);
-      setNotice(`已创建 ${data.code.code}（+${data.code.amount} 次）`);
+      const typeLabel = data.code.repeatable ? "可重复" : "一次性";
+      setNotice(
+        `已创建 ${data.code.code}（+${data.code.amount} 次 · ${typeLabel}）`,
+      );
       setCode("");
     } finally {
       setCreating(false);
@@ -124,7 +132,7 @@ export function AdminDashboard({
           <div>
             <h1 className="admin__title">兑换码后台</h1>
             <p className="admin__subtitle">
-              管理一次性兑换码 · 共 {stats.total} 张 · 可用 {stats.available} ·
+              兑换码管理 · 共 {stats.total} 张 · 一次性可用 {stats.available} ·
               已用 {stats.used}
             </p>
           </div>
@@ -165,6 +173,22 @@ export function AdminDashboard({
                 required
               />
             </div>
+            <div className="admin__field admin__field--check">
+              <label htmlFor="admin-repeatable" className="admin__check">
+                <input
+                  id="admin-repeatable"
+                  type="checkbox"
+                  checked={repeatable}
+                  onChange={(e) => setRepeatable(e.target.checked)}
+                />
+                <span>可重复使用</span>
+              </label>
+              <span className="admin__field-hint">
+                {repeatable
+                  ? "多人可用，每位用户仅可兑换一次"
+                  : "全局一次性兑换码，使用后作废"}
+              </span>
+            </div>
             <button
               type="submit"
               className="admin__btn admin__btn--primary"
@@ -188,49 +212,68 @@ export function AdminDashboard({
                   <tr>
                     <th>兑换码</th>
                     <th>+次数</th>
+                    <th>类型</th>
                     <th>状态</th>
+                    <th>已兑换</th>
                     <th>创建时间</th>
-                    <th>使用时间</th>
+                    <th>最近使用</th>
                     <th aria-label="操作" />
                   </tr>
                 </thead>
                 <tbody>
-                  {codes.map((c) => (
-                    <tr key={c.code} className={c.redeemed ? "is-redeemed" : ""}>
-                      <td>
-                        <button
-                          type="button"
-                          className="admin__codecell"
-                          onClick={() => copy(c.code)}
-                          title="点击复制"
-                        >
-                          {c.code}
-                        </button>
-                      </td>
-                      <td>+{c.amount}</td>
-                      <td>
-                        {c.redeemed ? (
-                          <span className="admin__badge admin__badge--used">已使用</span>
-                        ) : (
-                          <span className="admin__badge admin__badge--ok">可用</span>
-                        )}
-                      </td>
-                      <td className="admin__cell-time">{formatDate(c.createdAt)}</td>
-                      <td className="admin__cell-time">
-                        {c.redeemedAt ? formatDate(c.redeemedAt) : "—"}
-                      </td>
-                      <td className="admin__cell-actions">
-                        <button
-                          type="button"
-                          className="admin__btn admin__btn--danger"
-                          onClick={() => handleDelete(c.code)}
-                          disabled={pendingDelete === c.code}
-                        >
-                          {pendingDelete === c.code ? "删除中…" : "删除"}
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                  {codes.map((c) => {
+                    const depleted = !c.repeatable && c.redeemed;
+                    return (
+                      <tr key={c.code} className={depleted ? "is-redeemed" : ""}>
+                        <td>
+                          <button
+                            type="button"
+                            className="admin__codecell"
+                            onClick={() => copy(c.code)}
+                            title="点击复制"
+                          >
+                            {c.code}
+                          </button>
+                        </td>
+                        <td>+{c.amount}</td>
+                        <td>
+                          <span
+                            className={`admin__badge admin__badge--${c.repeatable ? "repeat" : "once"}`}
+                          >
+                            {c.repeatable ? "可重复" : "一次性"}
+                          </span>
+                        </td>
+                        <td>
+                          {depleted ? (
+                            <span className="admin__badge admin__badge--used">
+                              已使用
+                            </span>
+                          ) : (
+                            <span className="admin__badge admin__badge--ok">
+                              可用
+                            </span>
+                          )}
+                        </td>
+                        <td>{c.redeemedCount}</td>
+                        <td className="admin__cell-time">
+                          {formatDate(c.createdAt)}
+                        </td>
+                        <td className="admin__cell-time">
+                          {c.redeemedAt ? formatDate(c.redeemedAt) : "—"}
+                        </td>
+                        <td className="admin__cell-actions">
+                          <button
+                            type="button"
+                            className="admin__btn admin__btn--danger"
+                            onClick={() => handleDelete(c.code)}
+                            disabled={pendingDelete === c.code}
+                          >
+                            {pendingDelete === c.code ? "删除中…" : "删除"}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

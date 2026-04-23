@@ -28,7 +28,7 @@ export async function POST(req: Request) {
   if (guard) return guard;
   if (!isConfigured()) return kvNotConfigured();
 
-  let body: { code?: string; amount?: number | string };
+  let body: { code?: string; amount?: number | string; repeatable?: boolean };
   try {
     body = await req.json();
   } catch {
@@ -36,7 +36,8 @@ export async function POST(req: Request) {
   }
   const code = (body.code ?? "").toString();
   const amount = Number(body.amount);
-  const result = await createCode(code, amount);
+  const repeatable = Boolean(body.repeatable);
+  const result = await createCode(code, amount, repeatable);
   if (!result.ok) {
     const message =
       result.reason === "exists"

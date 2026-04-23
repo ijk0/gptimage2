@@ -478,9 +478,9 @@ export default function Home() {
   const [dropZoneFlash, setDropZoneFlash] = useState(false);
 
   const [quota, setQuota] = useState<Quota>({
-    limit: 5,
+    limit: 0,
     used: 0,
-    remaining: 5,
+    remaining: 0,
   });
   const [stamp, setStamp] = useState("");
 
@@ -783,7 +783,7 @@ export default function Home() {
         <div className="mast-meta">
           <span>No. 0001 · {stamp}</span>
           <span>
-            免费额度 <span className="cinnabar">{quota.remaining}</span> /{" "}
+            可用次数 <span className="cinnabar">{quota.remaining}</span> /{" "}
             {quota.limit}
           </span>
           {authEnabled ? (

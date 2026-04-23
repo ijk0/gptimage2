@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getRedis } from "./redis";
 import { readSession } from "./user-auth";
 
-export const FREE_LIMIT = Number(process.env.FREE_LIMIT ?? 5);
+export const FREE_LIMIT = Number(process.env.FREE_LIMIT ?? 0);
 
 // Normalize the provider base URL so both forms work:
 //   https://example.com           -> https://example.com/v1

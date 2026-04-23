@@ -22,11 +22,9 @@ local `.env.local` for development):
 | `IMAGE_API_KEY` | yes      | Bearer token for the API.                                                         |
 | `IMAGE_MODEL`   | no       | Model name. Defaults to `gpt-image-2`.                                            |
 | `TEXT_MODEL`    | no       | Chat model for "AI 构思" prompt crafting. Defaults to `gpt-5.4`. Must be served at `{IMAGE_API_URL}/chat/completions` by the same key. |
-| `FREE_LIMIT`    | no       | Max free generations per visitor (cookie-tracked). Defaults to `5`.               |
-| `RECHARGE_CODES`| no       | Comma-separated redemption codes. `WELCOME` uses `RECHARGE_AMOUNT`; `FRIEND:10` adds 10. Unset hides the redeem UI. |
-| `RECHARGE_AMOUNT`| no      | Default amount for codes without an explicit `:N` suffix. Defaults to `5`.        |
+| `FREE_LIMIT`    | no       | Baseline free generations per visitor. Defaults to `0` — users start with zero quota and must redeem a code to unlock generations. Set to a positive number to hand out a free baseline. |
 | `KV_REST_API_URL` / `KV_REST_API_TOKEN` | no | Upstash Redis credentials. Required for the `/admin` redemption-code panel **and** for user registration / login (`/login`). Free tier works. |
-| `ADMIN_PASSWORD` | no       | Enables `/admin` for managing redemption codes.                                  |
+| `ADMIN_PASSWORD` | no       | Enables `/admin` for managing redemption codes. Codes can be one-time (single global use) or repeatable (any user may redeem, but only once per user). |
 
 The server calls `POST {IMAGE_API_URL}/images/generations` with a Bearer auth
 header and an OpenAI-shaped body (`model`, `prompt`, `n`, `size`, `quality`).
