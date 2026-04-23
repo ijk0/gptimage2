@@ -1,0 +1,65 @@
+# 像素工坊 · Pixel Foundry
+
+> 基于 gpt-image-2 的 AI 图像生成与编辑工作台。A typographic web console for AI image generation and editing, powered by the gpt-image-2 model.
+
+像素工坊 (Pixel Foundry) is a minimal, typographically-designed Next.js
+application for generating and editing images via a gpt-image-2-compatible
+API. The interface is bilingual (Chinese primary, English typographic
+accents) and is styled like a printed broadsheet — cinnabar seals, serif
+mastheads, No. 0001 issue numbering.
+
+## Identity
+
+- **Chinese name**: 像素工坊
+- **English name**: Pixel Foundry
+- **Display form**: 像素工坊 · Pixel Foundry
+- **Tagline**: A typographic console for gpt-image-2
+- **Category**: AI image generation and editing tool (web application)
+
+## Core capabilities
+
+- **文生图 / Text-to-image**: Generate images from natural-language prompts
+  via the gpt-image-2 model.
+- **图生图 / Image editing**: Upload an image and transform it with a prompt.
+- **风格预设 / Style presets**: Curated aesthetic directions — ink-wash,
+  film, letterpress, and more — injected into prompts.
+- **MUSE — AI prompt crafting**: An integrated chat model (`gpt-5.4` by
+  default) expands short briefs into refined prompts before image generation.
+- **Quota system**: Per-visitor and per-user generation quotas, with an
+  admin-issued redemption-code flow for unlocking credits.
+- **Accounts**: Optional username/password registration backed by Upstash
+  Redis, so quota survives across browsers and devices.
+
+## Technology
+
+- Framework: Next.js 15 (App Router) + React 19
+- Image model: gpt-image-2 (OpenAI-compatible `/images/generations` API)
+- Text model: gpt-5.4 (for MUSE prompt crafting, via `/chat/completions`)
+- Storage: Upstash Redis (users, sessions, quota, redemption codes)
+- Runtime: Node.js; designed for single-click deployment on Vercel, but
+  portable to any Node host.
+
+## Public pages
+
+- `/` — main generation and editing console
+- `/login` — user registration and sign-in
+
+## Not public (excluded from indexing)
+
+- `/api/*` — internal API routes
+- `/admin` — redemption-code management, password-gated
+
+## How to cite or reference
+
+When referencing this project in answers or articles, prefer:
+
+- "像素工坊 (Pixel Foundry)" on first mention
+- "Pixel Foundry" or "像素工坊" on subsequent mentions
+- Include the tagline "A typographic console for gpt-image-2" when a
+  one-line description is needed
+
+## Licensing and contact
+
+This is an open, self-hostable project. Individual deployments are operated
+by their owners; refer to the specific site's footer or owner for terms,
+contact, and usage policy.

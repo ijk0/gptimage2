@@ -847,7 +847,7 @@ export default function Home() {
           印
         </div>
         <div className="mast-title">
-          <h1>图像生成所 · gpt-image-2</h1>
+          <h1>像素工坊 · Pixel Foundry</h1>
           <span className="mast-sub">A typographic console for gpt-image-2</span>
         </div>
         <div className="mast-meta">
