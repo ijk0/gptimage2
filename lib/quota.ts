@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { getRedis } from "./redis";
+import { readSession } from "./user-auth";
 
 export const FREE_LIMIT = Number(process.env.FREE_LIMIT ?? 5);
 
@@ -22,6 +24,42 @@ export type Quota = {
   remaining: number;
   grant: number;
 };
+
+export type UnifiedQuota = Quota & { username: string | null };
+
+type StoredUserQuota = { used: number; grant: number };
+
+function userQuotaKey(username: string): string {
+  return `userq:${username}`;
+}
+
+function parseUserQuota(raw: unknown): StoredUserQuota {
+  if (raw && typeof raw === "object") {
+    const r = raw as Partial<StoredUserQuota>;
+    return {
+      used: Number.isFinite(r.used) ? Math.max(0, Math.floor(r.used as number)) : 0,
+      grant: Number.isFinite(r.grant) ? Math.max(0, Math.floor(r.grant as number)) : 0,
+    };
+  }
+  if (typeof raw === "string") {
+    try {
+      return parseUserQuota(JSON.parse(raw));
+    } catch {
+      return { used: 0, grant: 0 };
+    }
+  }
+  return { used: 0, grant: 0 };
+}
+
+function buildQuota(stored: StoredUserQuota): Quota {
+  const limit = FREE_LIMIT + stored.grant;
+  return {
+    limit,
+    used: stored.used,
+    grant: stored.grant,
+    remaining: Math.max(limit - stored.used, 0),
+  };
+}
 
 function readIntCookie(req: Request, name: string): number {
   const cookie = req.headers.get("cookie") ?? "";
@@ -59,4 +97,76 @@ export function setQuotaCookies(
       `${GRANT_COOKIE}=${values.grant}; Path=/; Max-Age=${COOKIE_MAX_AGE}; SameSite=Lax; HttpOnly`,
     );
   }
+}
+
+async function loadUserQuota(username: string): Promise<StoredUserQuota> {
+  const redis = getRedis();
+  const raw = await redis.get(userQuotaKey(username));
+  return parseUserQuota(raw);
+}
+
+async function saveUserQuota(
+  username: string,
+  next: StoredUserQuota,
+): Promise<void> {
+  const redis = getRedis();
+  await redis.set(userQuotaKey(username), JSON.stringify(next));
+}
+
+export async function getQuotaUnified(req: Request): Promise<UnifiedQuota> {
+  const username = await readSession(req);
+  if (username) {
+    const stored = await loadUserQuota(username);
+    return { ...buildQuota(stored), username };
+  }
+  return { ...readQuota(req), username: null };
+}
+
+export type QuotaUpdate = {
+  quota: Quota;
+  applyCookies: (res: NextResponse) => void;
+};
+
+const noopCookies = () => {};
+
+export async function recordUsage(
+  req: Request,
+  delta: number,
+): Promise<QuotaUpdate> {
+  const inc = Math.max(0, Math.floor(delta));
+  const username = await readSession(req);
+  if (username) {
+    const stored = await loadUserQuota(username);
+    const next: StoredUserQuota = { used: stored.used + inc, grant: stored.grant };
+    await saveUserQuota(username, next);
+    return { quota: buildQuota(next), applyCookies: noopCookies };
+  }
+  const current = readQuota(req);
+  const newUsed = current.used + inc;
+  const next: StoredUserQuota = { used: newUsed, grant: current.grant };
+  return {
+    quota: buildQuota(next),
+    applyCookies: (res) => setQuotaCookies(res, { used: newUsed, grant: current.grant }),
+  };
+}
+
+export async function addGrant(
+  req: Request,
+  amount: number,
+): Promise<QuotaUpdate> {
+  const add = Math.max(0, Math.floor(amount));
+  const username = await readSession(req);
+  if (username) {
+    const stored = await loadUserQuota(username);
+    const next: StoredUserQuota = { used: stored.used, grant: stored.grant + add };
+    await saveUserQuota(username, next);
+    return { quota: buildQuota(next), applyCookies: noopCookies };
+  }
+  const current = readQuota(req);
+  const newGrant = current.grant + add;
+  const next: StoredUserQuota = { used: current.used, grant: newGrant };
+  return {
+    quota: buildQuota(next),
+    applyCookies: (res) => setQuotaCookies(res, { grant: newGrant }),
+  };
 }

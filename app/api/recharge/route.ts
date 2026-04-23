@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { readQuota, setQuotaCookies } from "@/lib/quota";
+import { addGrant } from "@/lib/quota";
 import { isConfigured } from "@/lib/redis";
 import { consumeCode } from "@/lib/redeem-codes";
 
@@ -33,17 +33,15 @@ export async function POST(req: Request) {
     );
   }
 
-  const quota = readQuota(req);
-  const newGrant = quota.grant + result.amount;
-  const newLimit = quota.limit + result.amount;
+  const update = await addGrant(req, result.amount);
   const res = NextResponse.json({
     added: result.amount,
-    limit: newLimit,
-    used: quota.used,
-    grant: newGrant,
-    remaining: Math.max(newLimit - quota.used, 0),
+    limit: update.quota.limit,
+    used: update.quota.used,
+    grant: update.quota.grant,
+    remaining: update.quota.remaining,
   });
-  setQuotaCookies(res, { grant: newGrant });
+  update.applyCookies(res);
   return res;
 }
 

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { readQuota, setQuotaCookies, apiBase } from "@/lib/quota";
+import { apiBase, getQuotaUnified, recordUsage } from "@/lib/quota";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -63,12 +63,15 @@ async function handlePost(req: Request) {
     4,
   );
 
-  const quota = readQuota(req);
+  const quota = await getQuotaUnified(req);
   if (quota.remaining <= 0) {
     return NextResponse.json(
       {
         error: `免费额度已用完（${quota.limit} 张）。可使用兑换码继续编辑。`,
-        ...quota,
+        limit: quota.limit,
+        used: quota.used,
+        grant: quota.grant,
+        remaining: quota.remaining,
       },
       { status: 429 },
     );
@@ -179,16 +182,15 @@ async function handlePost(req: Request) {
     );
   }
 
-  const newUsed = quota.used + images.length;
-  const newRemaining = Math.max(quota.limit - newUsed, 0);
+  const update = await recordUsage(req, images.length);
   const res = NextResponse.json({
     images,
     format,
-    limit: quota.limit,
-    used: newUsed,
-    remaining: newRemaining,
-    grant: quota.grant,
+    limit: update.quota.limit,
+    used: update.quota.used,
+    remaining: update.quota.remaining,
+    grant: update.quota.grant,
   });
-  setQuotaCookies(res, { used: newUsed, grant: quota.grant });
+  update.applyCookies(res);
   return res;
 }

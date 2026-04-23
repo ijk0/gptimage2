@@ -25,10 +25,24 @@ local `.env.local` for development):
 | `FREE_LIMIT`    | no       | Max free generations per visitor (cookie-tracked). Defaults to `5`.               |
 | `RECHARGE_CODES`| no       | Comma-separated redemption codes. `WELCOME` uses `RECHARGE_AMOUNT`; `FRIEND:10` adds 10. Unset hides the redeem UI. |
 | `RECHARGE_AMOUNT`| no      | Default amount for codes without an explicit `:N` suffix. Defaults to `5`.        |
+| `KV_REST_API_URL` / `KV_REST_API_TOKEN` | no | Upstash Redis credentials. Required for the `/admin` redemption-code panel **and** for user registration / login (`/login`). Free tier works. |
+| `ADMIN_PASSWORD` | no       | Enables `/admin` for managing redemption codes.                                  |
 
 The server calls `POST {IMAGE_API_URL}/images/generations` with a Bearer auth
 header and an OpenAI-shaped body (`model`, `prompt`, `n`, `size`, `quality`).
 It accepts responses where each item has either `b64_json` or `url`.
+
+### 用户注册与登录（需 Upstash Redis）
+
+Visit `/login` to register a username + password. Logged-in users get
+server-side quota and redemption credits stored in Redis (keys `user:<name>`,
+`userq:<name>`, `session:<token>`), so the same account works across browsers
+and devices. Sessions are 30-day HttpOnly cookies. Anonymous visitors keep the
+existing cookie-based quota — no behavior change if Redis is unset.
+
+Implementation is dependency-free: passwords use `crypto.scryptSync` with a
+per-user random salt, sessions are random 32-byte tokens. There is no email
+verification or password reset flow (no SMTP needed = stays free).
 
 ## Local development
 

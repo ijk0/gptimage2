@@ -206,6 +206,39 @@ a {
   font-weight: 500;
 }
 
+.mast-auth {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.mast-auth__btn {
+  display: inline-block;
+  padding: 2px 8px;
+  border: 1px solid var(--ink-muted);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--ink-muted);
+  font-family: inherit;
+  font-size: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.mast-auth__btn:hover {
+  color: var(--cinnabar);
+  border-color: var(--cinnabar);
+}
+
+.mast-auth__btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 /* ========== Section header ========== */
 
 .sec {

@@ -490,6 +490,10 @@ export default function Home() {
   const [rechargeState, setRechargeState] = useState<RechargeState>("idle");
   const [rechargeMsg, setRechargeMsg] = useState<string | null>(null);
 
+  const [authEnabled, setAuthEnabled] = useState(false);
+  const [username, setUsername] = useState<string | null>(null);
+  const [authBusy, setAuthBusy] = useState(false);
+
   const [museState, setMuseState] = useState<MuseState>("idle");
   const [museError, setMuseError] = useState<string | null>(null);
 
@@ -500,10 +504,16 @@ export default function Home() {
     setStamp(todayStamp());
     (async () => {
       try {
-        const r = await fetch("/api/generate");
+        const r = await fetch("/api/auth/me");
         if (r.ok) {
-          const d = (await safeJson(r)) as unknown as Quota;
-          setQuota(d);
+          const d = (await safeJson(r)) as {
+            username: string | null;
+            quota: Quota;
+            authEnabled: boolean;
+          };
+          if (d.quota) setQuota(d.quota);
+          setUsername(d.username ?? null);
+          setAuthEnabled(!!d.authEnabled);
         }
       } catch {
         /* bootstrap failure is silent; UI falls back to default quota */
@@ -517,6 +527,23 @@ export default function Home() {
       }
     })();
   }, []);
+
+  async function handleLogout() {
+    if (authBusy) return;
+    setAuthBusy(true);
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+      setUsername(null);
+      // Re-pull quota so anonymous cookie quota is reflected.
+      const r = await fetch("/api/auth/me");
+      if (r.ok) {
+        const d = (await safeJson(r)) as { quota: Quota };
+        if (d.quota) setQuota(d.quota);
+      }
+    } finally {
+      setAuthBusy(false);
+    }
+  }
 
   // Revoke object URL when preview changes / component unmounts.
   useEffect(() => {
@@ -759,6 +786,27 @@ export default function Home() {
             免费额度 <span className="cinnabar">{quota.remaining}</span> /{" "}
             {quota.limit}
           </span>
+          {authEnabled ? (
+            <span className="mast-auth">
+              {username ? (
+                <>
+                  <span>账号 · {username}</span>
+                  <button
+                    type="button"
+                    className="mast-auth__btn"
+                    onClick={handleLogout}
+                    disabled={authBusy}
+                  >
+                    {authBusy ? "退出中…" : "退出"}
+                  </button>
+                </>
+              ) : (
+                <a className="mast-auth__btn" href="/login">
+                  登录 / 注册
+                </a>
+              )}
+            </span>
+          ) : null}
         </div>
       </header>
 
