@@ -955,16 +955,10 @@ export default function Home() {
             ))}
           </div>
         ) : images.length > 0 ? (
-          <div
-            className="plates"
-            style={{ ["--ratio" as string]: plateRatio }}
-          >
+          <div className="plates">
             {images.map((src, i) => (
               <figure key={i} className="plate">
-                <div
-                  className="plate-frame"
-                  style={{ ["--ratio" as string]: plateRatio }}
-                >
+                <div className="plate-frame">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={src} alt={`生成结果 ${i + 1}`} />
                   <div className="plate-overlay">
