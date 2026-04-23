@@ -21,6 +21,7 @@ local `.env.local` for development):
 | `IMAGE_API_URL` | yes      | Base URL of the API, e.g. `https://api.openai.com/v1`. No trailing path.          |
 | `IMAGE_API_KEY` | yes      | Bearer token for the API.                                                         |
 | `IMAGE_MODEL`   | no       | Model name. Defaults to `gpt-image-2`.                                            |
+| `FREE_LIMIT`    | no       | Max free generations per visitor (cookie-tracked). Defaults to `5`.               |
 
 The server calls `POST {IMAGE_API_URL}/images/generations` with a Bearer auth
 header and an OpenAI-shaped body (`model`, `prompt`, `n`, `size`, `quality`).
@@ -45,3 +46,30 @@ Open <http://localhost:3000>.
 
 The API route (`app/api/generate/route.ts`) runs on the Node.js runtime with a
 5-minute max duration so large images have time to generate.
+
+## Custom subdomain via Cloudflare
+
+Point a subdomain like `image.yourdomain.com` at your Vercel deployment using
+Cloudflare DNS.
+
+1. **Add the domain in Vercel**
+   - Go to the project → **Settings → Domains**
+   - Enter your subdomain (e.g. `image.yourdomain.com`) and click **Add**
+   - Vercel shows a CNAME target: `cname.vercel-dns.com`
+
+2. **Add the DNS record in Cloudflare**
+   - Cloudflare dashboard → your domain → **DNS → Records → Add record**
+   - **Type**: `CNAME`
+   - **Name**: `image` (or whatever subdomain you chose)
+   - **Target**: `cname.vercel-dns.com`
+   - **Proxy status**: **DNS only** (gray cloud) — do *not* enable the orange-cloud proxy, or Vercel cannot issue its Let's Encrypt cert and the two SSL layers will conflict
+   - Save
+
+3. **Wait for SSL**
+   - Back in Vercel the domain will go from *Invalid Configuration* to *Valid Configuration* within a minute or two and HTTPS will work automatically.
+
+> Note: Vercel has no official mainland-China route. `cname.vercel-dns.com` and
+> Cloudflare free-tier IPs are both frequently blocked or slowed by the GFW.
+> For reliable mainland access you need a China-friendly CDN in front (e.g.
+> Tencent Cloud EdgeOne / Alibaba Cloud CDN with ICP filing) or a
+> Hong-Kong / Japan VPS reverse-proxying Vercel.
