@@ -304,6 +304,62 @@ a {
   line-height: 1.5;
 }
 
+/* Design template dropdown */
+
+.tpl-field {
+  display: grid;
+  gap: 6px;
+  margin-top: var(--space-xs);
+  padding-top: var(--space-xs);
+  border-top: 1px dotted var(--rule-strong);
+}
+
+.tpl-select {
+  width: 100%;
+  padding: 8px 24px 8px 0;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 14px;
+  color: var(--ink);
+  cursor: pointer;
+  appearance: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--cinnabar) 50%),
+    linear-gradient(-45deg, transparent 50%, var(--cinnabar) 50%);
+  background-position:
+    calc(100% - 10px) 55%,
+    calc(100% - 6px) 55%;
+  background-size:
+    4px 4px,
+    4px 4px;
+  background-repeat: no-repeat;
+  border-bottom: 1px solid transparent;
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.tpl-select:hover,
+.tpl-select:focus-visible {
+  border-bottom-color: var(--rule-strong);
+  color: var(--cinnabar);
+}
+
+.tpl-select option {
+  font-style: normal;
+  font-family: var(--font-sans);
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.tpl-select optgroup {
+  font-family: var(--font-serif);
+  font-weight: 600;
+  font-style: normal;
+  color: var(--ink-muted);
+  background: var(--paper-sunken);
+}
+
 /* Style chips */
 .styles {
   display: grid;

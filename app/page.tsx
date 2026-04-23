@@ -7,6 +7,99 @@ type Quota = { limit: number; used: number; remaining: number; grant?: number };
 type RechargeState = "idle" | "submitting" | "ok" | "error";
 type MuseState = "idle" | "generating" | "error";
 
+const DESIGN_TEMPLATES: {
+  group: string;
+  items: { label: string; text: string }[];
+}[] = [
+  {
+    group: "整屋 · House",
+    items: [
+      {
+        label: "日式现代住宅",
+        text: "日式现代住宅外观，单层嵌入坡地，深出檐遮阳廊，手刨雪松外立面配黑色金属收边，整面玻璃推拉门通向砾石庭院",
+      },
+      {
+        label: "北欧极简公寓",
+        text: "北欧极简公寓客厅，白橡宽板地板，亚麻沙发，极简石灰白墙，大面积北窗引入柔光，角落一盆橄榄树",
+      },
+      {
+        label: "地中海别墅",
+        text: "地中海山丘别墅外观，白色石灰外墙与赤陶瓦屋顶，钴蓝色木门窗，橄榄树与紫葳藤缠绕院墙",
+      },
+      {
+        label: "工业风 Loft",
+        text: "工业风 loft 内景，裸露红砖与钢梁，抛光水泥地，大窗引入侧光，棕色皮沙发与长条木桌",
+      },
+      {
+        label: "明清中式院落",
+        text: "明清中式四合院俯视，青砖灰瓦坡屋顶，正房厢房围合，中央方形庭院种两棵老槐，青石板路",
+      },
+      {
+        label: "侘寂茶屋",
+        text: "侘寂风茶屋，土墙、黑松木柱、苔藓石径通向纸障子，简素榻榻米室内，光从高窗斜射",
+      },
+    ],
+  },
+  {
+    group: "单间 · Room",
+    items: [
+      {
+        label: "温暖极简客厅",
+        text: "温暖极简客厅，米色亚麻沙发，圆形旅行灰石材茶几，厚羊毛地毯，落地窗外见花园绿意",
+      },
+      {
+        label: "莫兰迪卧室",
+        text: "莫兰迪色卧室，哑粉米色床品，素色亚麻帷帐，床头陶瓶插干枝，柔和晨光",
+      },
+      {
+        label: "日式原木厨房",
+        text: "日式家庭厨房，浅色橡木橱柜与灰泥墙，方形石材中岛，推拉纸门通向后院苔藓庭",
+      },
+      {
+        label: "石材温泉浴室",
+        text: "温泉主题浴室，整面洞石墙与地面，独立铸铁浴缸，黄铜淋浴与毛巾架，天光自上方洒下",
+      },
+      {
+        label: "黑胡桃书房",
+        text: "黑胡桃书房，整面内嵌式书墙，深绿皮扶手椅与黄铜台灯，壁炉暖光",
+      },
+      {
+        label: "儿童游戏房",
+        text: "儿童游戏房，浅木地板与奶油色墙面，低矮帆布帐篷，原木积木与软棉玩偶散落，侧窗柔光",
+      },
+    ],
+  },
+  {
+    group: "庭院 · Yard",
+    items: [
+      {
+        label: "日式枯山水",
+        text: "日式枯山水庭院，耙纹白砾石、几块深色立石、苔藓与一株老松，木质侧廊与纸障子",
+      },
+      {
+        label: "英式花境",
+        text: "英式花境小径，多年生草本层层绽放，低矮黄杨绿篱，碎石小径通向橡木拱门",
+      },
+      {
+        label: "地中海露台",
+        text: "地中海露台，橄榄与柠檬树盆栽，赤陶地砖，白石灰矮墙，木质长桌与藤编灯串",
+      },
+      {
+        label: "现代无边泳池",
+        text: "现代山景别墅的无边泳池，洞石泳池边，棕榈与橄榄树，远处海平线，黄昏暖光",
+      },
+      {
+        label: "小阳台花园",
+        text: "城市公寓小阳台花园，竹木地板，藤编椅与小几，多肉与草本盆栽沿栏杆排列，傍晚软光",
+      },
+      {
+        label: "苏州园林一角",
+        text: "苏州园林一角，白墙黛瓦，月洞门，几竿湘妃竹映在墙上，石阶青苔，池水静谧",
+      },
+    ],
+  },
+];
+
 const STYLES: { value: string; label: string }[] = [
   { value: "", label: "无" },
   { value: "胶片", label: "胶片" },
@@ -301,6 +394,33 @@ export default function Home() {
                 <span className="intent-hint">
                   先写下你想看到的画面，再挑一个风格，MUSE 会替你写详细提示词。
                 </span>
+                <div className="tpl-field">
+                  <span className="micro-label">设计题材 · Design preset</span>
+                  <select
+                    className="tpl-select"
+                    value=""
+                    onChange={(e) => {
+                      const label = e.target.value;
+                      if (!label) return;
+                      const hit = DESIGN_TEMPLATES.flatMap((g) => g.items).find(
+                        (t) => t.label === label,
+                      );
+                      if (hit) setIntent(hit.text);
+                      e.target.value = "";
+                    }}
+                  >
+                    <option value="">— 从住宅/房间/庭院题材中选一 —</option>
+                    {DESIGN_TEMPLATES.map((group) => (
+                      <optgroup key={group.group} label={group.group}>
+                        {group.items.map((t) => (
+                          <option key={t.label} value={t.label}>
+                            {t.label}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <div className="styles">
