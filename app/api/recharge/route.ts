@@ -1,41 +1,14 @@
 import { NextResponse } from "next/server";
 import { readQuota, setQuotaCookies } from "@/lib/quota";
+import { isConfigured } from "@/lib/redis";
+import { consumeCode } from "@/lib/redeem-codes";
 
 export const runtime = "nodejs";
 
-/**
- * RECHARGE_CODES env format (comma-separated):
- *   WELCOME          → uses RECHARGE_AMOUNT (default 5)
- *   FRIEND:10        → adds 10 generations
- *   VIP:20           → adds 20 generations
- *
- * Unset → recharge disabled.
- */
-type CodeMap = Map<string, number>;
-
-function parseCodes(): CodeMap {
-  const raw = process.env.RECHARGE_CODES?.trim();
-  const defaultAmount = Number(process.env.RECHARGE_AMOUNT ?? 5);
-  const map: CodeMap = new Map();
-  if (!raw) return map;
-  for (const entry of raw.split(",")) {
-    const piece = entry.trim();
-    if (!piece) continue;
-    const [codeRaw, amtRaw] = piece.split(":");
-    const code = codeRaw.trim();
-    if (!code) continue;
-    const amt = amtRaw ? Number(amtRaw.trim()) : defaultAmount;
-    if (!Number.isFinite(amt) || amt <= 0) continue;
-    map.set(code, Math.floor(amt));
-  }
-  return map;
-}
-
 export async function POST(req: Request) {
-  const codes = parseCodes();
-  if (codes.size === 0) {
+  if (!isConfigured()) {
     return NextResponse.json(
-      { error: "兑换功能未开启。管理员需配置 RECHARGE_CODES 环境变量。" },
+      { error: "兑换功能未开启。管理员需配置 Upstash Redis 与兑换码。" },
       { status: 501 },
     );
   }
@@ -52,8 +25,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "请输入兑换码" }, { status: 400 });
   }
 
-  const amount = codes.get(code);
-  if (!amount) {
+  const result = await consumeCode(code);
+  if (!result.ok) {
     return NextResponse.json(
       { error: "兑换码无效或已过期" },
       { status: 400 },
@@ -61,10 +34,10 @@ export async function POST(req: Request) {
   }
 
   const quota = readQuota(req);
-  const newGrant = quota.grant + amount;
-  const newLimit = quota.limit + amount;
+  const newGrant = quota.grant + result.amount;
+  const newLimit = quota.limit + result.amount;
   const res = NextResponse.json({
-    added: amount,
+    added: result.amount,
     limit: newLimit,
     used: quota.used,
     grant: newGrant,
@@ -75,6 +48,5 @@ export async function POST(req: Request) {
 }
 
 export async function GET() {
-  const codes = parseCodes();
-  return NextResponse.json({ enabled: codes.size > 0 });
+  return NextResponse.json({ enabled: isConfigured() });
 }
