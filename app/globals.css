@@ -207,6 +207,7 @@ a {
 }
 
 .mast-quota {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 10px;
@@ -233,7 +234,8 @@ a {
     box-shadow 0.15s ease;
 }
 
-.mast-redeem:hover {
+.mast-redeem:hover,
+.mast-redeem.is-open {
   background: var(--cinnabar);
   color: var(--cinnabar-ink);
 }
@@ -246,6 +248,74 @@ a {
 
 .mast-redeem.is-urgent:hover {
   filter: brightness(1.05);
+}
+
+/* Popover anchored to the 兑换 button. */
+.recharge-popover {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: min(360px, calc(100vw - var(--space-lg) * 2));
+  padding: var(--space-sm) var(--space-sm) calc(var(--space-sm) - 2px);
+  background: var(--paper);
+  border: 1px solid var(--ink);
+  border-radius: 3px;
+  box-shadow:
+    0 1px 0 var(--ink),
+    0 12px 28px -12px color-mix(in oklch, var(--ink) 45%, transparent);
+  text-align: left;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--ink);
+  z-index: 40;
+  animation: recharge-popover-in 0.18s var(--ease-out);
+}
+
+.recharge-popover::before,
+.recharge-popover::after {
+  content: "";
+  position: absolute;
+  right: 18px;
+  width: 0;
+  height: 0;
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+}
+/* Outer triangle = ink border stroke */
+.recharge-popover::before {
+  top: -8px;
+  border-bottom: 8px solid var(--ink);
+}
+/* Inner triangle = paper fill, 1px inside the border */
+.recharge-popover::after {
+  top: -7px;
+  border-bottom: 8px solid var(--paper);
+}
+
+@keyframes recharge-popover-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 520px) {
+  .recharge-popover {
+    position: fixed;
+    top: auto;
+    right: var(--space-sm);
+    left: var(--space-sm);
+    bottom: var(--space-sm);
+    width: auto;
+  }
+  .recharge-popover::before,
+  .recharge-popover::after {
+    display: none;
+  }
 }
 
 .mast-auth {
@@ -863,42 +933,9 @@ a {
 
 /* ========== Recharge ========== */
 
-.recharge {
-  max-width: 420px;
-  padding-top: var(--space-xs);
-}
-
-.recharge-toggle {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.8px;
-  text-transform: uppercase;
-  color: var(--cinnabar);
-  text-decoration: underline;
-  text-decoration-style: dotted;
-  text-underline-offset: 4px;
-  transition: opacity 0.15s ease;
-}
-
-.recharge-toggle:hover {
-  opacity: 0.75;
-}
-
 .recharge-form {
   display: grid;
   gap: var(--space-xs);
-  animation: unfold 0.25s var(--ease-out);
-}
-
-@keyframes unfold {
-  from {
-    opacity: 0;
-    transform: translateY(-4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }
 
 .recharge-head {

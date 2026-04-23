@@ -635,6 +635,35 @@ export default function Home() {
   const [rechargeCode, setRechargeCode] = useState("");
   const [rechargeState, setRechargeState] = useState<RechargeState>("idle");
   const [rechargeMsg, setRechargeMsg] = useState<string | null>(null);
+  const rechargePopoverRef = useRef<HTMLSpanElement>(null);
+  const rechargeInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!rechargeOpen) return;
+    const closePopover = () => {
+      setRechargeOpen(false);
+      setRechargeMsg(null);
+    };
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") closePopover();
+    }
+    function onPointerDown(e: MouseEvent) {
+      const el = rechargePopoverRef.current;
+      if (el && !el.contains(e.target as Node)) closePopover();
+    }
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("mousedown", onPointerDown);
+    // Autofocus the input on open, and push cursor to end.
+    const input = rechargeInputRef.current;
+    if (input) {
+      input.focus();
+      input.setSelectionRange(input.value.length, input.value.length);
+    }
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("mousedown", onPointerDown);
+    };
+  }, [rechargeOpen]);
 
   const [authEnabled, setAuthEnabled] = useState(false);
   const [username, setUsername] = useState<string | null>(null);
@@ -1073,19 +1102,79 @@ export default function Home() {
         </div>
         <div className="mast-meta">
           <span>No. 0001 · {stamp}</span>
-          <span className="mast-quota">
+          <span className="mast-quota" ref={rechargePopoverRef}>
             <span className="mast-quota__label">
               可用次数 <span className="cinnabar">{quota.remaining}</span> /{" "}
               {quota.limit}
             </span>
-            {rechargeEnabled && !rechargeOpen && (
+            {rechargeEnabled && (
               <button
                 type="button"
-                className={`mast-redeem${quotaExhausted ? " is-urgent" : ""}`}
-                onClick={() => setRechargeOpen(true)}
+                className={`mast-redeem${quotaExhausted ? " is-urgent" : ""}${rechargeOpen ? " is-open" : ""}`}
+                onClick={() => {
+                  setRechargeOpen((v) => !v);
+                  setRechargeMsg(null);
+                }}
+                aria-expanded={rechargeOpen}
+                aria-controls="recharge-popover"
               >
                 {quotaExhausted ? "兑换 →" : "兑换"}
               </button>
+            )}
+            {rechargeEnabled && rechargeOpen && (
+              <div
+                id="recharge-popover"
+                className="recharge-popover"
+                role="dialog"
+                aria-label="兑换次数"
+              >
+                <form className="recharge-form" onSubmit={onRecharge}>
+                  <div className="recharge-head">
+                    <span className="recharge-title">兑换次数 · Redeem</span>
+                    <button
+                      type="button"
+                      className="recharge-close"
+                      onClick={() => {
+                        setRechargeOpen(false);
+                        setRechargeMsg(null);
+                      }}
+                      aria-label="关闭"
+                    >
+                      ×
+                    </button>
+                  </div>
+                  <div className="recharge-row">
+                    <input
+                      ref={rechargeInputRef}
+                      type="text"
+                      className="recharge-input"
+                      value={rechargeCode}
+                      onChange={(e) => setRechargeCode(e.target.value)}
+                      placeholder="WELCOME / FRIEND …"
+                      autoComplete="off"
+                      spellCheck={false}
+                    />
+                    <button
+                      type="submit"
+                      className="recharge-submit"
+                      disabled={
+                        !rechargeCode.trim() || rechargeState === "submitting"
+                      }
+                    >
+                      {rechargeState === "submitting" ? "兑换中" : "兑换"}
+                    </button>
+                  </div>
+                  {rechargeMsg && (
+                    <div
+                      className={`recharge-msg recharge-msg-${
+                        rechargeState === "ok" ? "ok" : "err"
+                      }`}
+                    >
+                      {rechargeMsg}
+                    </div>
+                  )}
+                </form>
+              </div>
             )}
           </span>
           {authEnabled ? (
@@ -1574,64 +1663,14 @@ export default function Home() {
       </form>
 
       <div className="side-notes">
-          {error && (
-            <div
-              className={`error${quotaExhausted ? " quota-exhausted" : ""}`}
-              role="alert"
-            >
-              {error}
-            </div>
-          )}
-
-          {rechargeEnabled && rechargeOpen && (
-            <div className="recharge">
-              <form className="recharge-form" onSubmit={onRecharge}>
-                  <div className="recharge-head">
-                    <span className="recharge-title">兑换次数 · Redeem</span>
-                    <button
-                      type="button"
-                      className="recharge-close"
-                      onClick={() => {
-                        setRechargeOpen(false);
-                        setRechargeMsg(null);
-                      }}
-                      aria-label="关闭"
-                    >
-                      ×
-                    </button>
-                  </div>
-                  <div className="recharge-row">
-                    <input
-                      type="text"
-                      className="recharge-input"
-                      value={rechargeCode}
-                      onChange={(e) => setRechargeCode(e.target.value)}
-                      placeholder="WELCOME / FRIEND …"
-                      autoComplete="off"
-                      spellCheck={false}
-                    />
-                    <button
-                      type="submit"
-                      className="recharge-submit"
-                      disabled={
-                        !rechargeCode.trim() || rechargeState === "submitting"
-                      }
-                    >
-                      {rechargeState === "submitting" ? "兑换中" : "兑换"}
-                    </button>
-                  </div>
-                  {rechargeMsg && (
-                    <div
-                      className={`recharge-msg recharge-msg-${
-                        rechargeState === "ok" ? "ok" : "err"
-                      }`}
-                    >
-                      {rechargeMsg}
-                    </div>
-                  )}
-                </form>
-            </div>
-          )}
+        {error && (
+          <div
+            className={`error${quotaExhausted ? " quota-exhausted" : ""}`}
+            role="alert"
+          >
+            {error}
+          </div>
+        )}
       </div>
 
       <section
