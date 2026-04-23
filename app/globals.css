@@ -245,7 +245,7 @@ a {
 
 .workbench {
   display: grid;
-  grid-template-columns: minmax(280px, 2fr) minmax(320px, 3fr);
+  grid-template-columns: minmax(320px, 1fr) minmax(320px, 1fr);
   gap: var(--space-xl);
   align-items: stretch;
 }
@@ -276,25 +276,43 @@ a {
   gap: var(--space-xs);
 }
 
+.intent-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-sm);
+}
+
+.intent-count {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.6px;
+  color: var(--ink-subtle);
+}
+
 .intent-input {
   width: 100%;
-  padding: var(--space-sm) var(--space-md);
+  padding: var(--space-md);
   font-family: var(--font-serif);
   font-size: 17px;
-  line-height: 1.5;
+  line-height: 1.7;
   color: var(--ink);
   background: var(--paper-sunken);
   border: 1px solid var(--rule);
+  resize: vertical;
+  min-height: 140px;
   transition: border-color 0.18s var(--ease-out);
 }
 
 .intent-input::placeholder {
   color: var(--ink-subtle);
   font-style: italic;
+  line-height: 1.7;
 }
 
 .intent-input:focus {
   border-color: var(--ink);
+  outline: none;
 }
 
 .intent-hint {

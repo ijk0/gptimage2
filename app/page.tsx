@@ -382,14 +382,17 @@ export default function Home() {
           <div className="workbench">
             <div className="intent-col">
               <div className="intent-field">
-                <span className="micro-label">立意 · What do you want</span>
-                <input
-                  type="text"
+                <div className="intent-head">
+                  <span className="micro-label">立意 · What do you want</span>
+                  <span className="intent-count">{intent.length} / 600</span>
+                </div>
+                <textarea
                   className="intent-input"
                   value={intent}
                   onChange={(e) => setIntent(e.target.value)}
-                  placeholder="一句话，例：一只戴围巾的柴犬坐在月球上"
-                  maxLength={120}
+                  placeholder="写下你想看到的画面，一句或一段都好。&#10;例：一只戴围巾的柴犬坐在月球上，背后地球正在升起，胶片颗粒。"
+                  rows={4}
+                  maxLength={600}
                 />
                 <span className="intent-hint">
                   先写下你想看到的画面，再挑一个风格，MUSE 会替你写详细提示词。
@@ -587,8 +590,9 @@ export default function Home() {
             )}
           </button>
         </div>
+      </form>
 
-        <div className="side-notes">
+      <div className="side-notes">
           {error && (
             <div
               className={`error${quotaExhausted ? " quota-exhausted" : ""}`}
@@ -657,8 +661,7 @@ export default function Home() {
               )}
             </div>
           )}
-        </div>
-      </form>
+      </div>
 
       <section className="sec gallery-sec" aria-live="polite">
         <div className="sec-head">
