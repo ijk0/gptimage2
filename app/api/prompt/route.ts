@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { apiBase } from "@/lib/quota";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -19,11 +20,10 @@ const SYSTEM_PROMPT = `你是一位资深的图像生成提示词专家，专门
 - 只输出一个版本，不要给多个备选。`;
 
 export async function POST(req: Request) {
-  const apiUrl = process.env.IMAGE_API_URL;
   const apiKey = process.env.IMAGE_API_KEY;
   const model = process.env.TEXT_MODEL ?? "gpt-5.4";
 
-  if (!apiUrl || !apiKey) {
+  if (!apiBase() || !apiKey) {
     return NextResponse.json(
       { error: "服务器未配置 IMAGE_API_URL 或 IMAGE_API_KEY" },
       { status: 500 },
@@ -49,7 +49,7 @@ export async function POST(req: Request) {
     ? `主题：${scenario}\n风格偏好：${body.style}`
     : `主题：${scenario}`;
 
-  const endpoint = apiUrl.replace(/\/+$/, "") + "/chat/completions";
+  const endpoint = `${apiBase()}/chat/completions`;
 
   let upstream: Response;
   try {

@@ -18,7 +18,7 @@ local `.env.local` for development):
 
 | Name            | Required | Description                                                                       |
 | --------------- | -------- | --------------------------------------------------------------------------------- |
-| `IMAGE_API_URL` | yes      | Base URL of the API, e.g. `https://api.openai.com/v1`. No trailing path.          |
+| `IMAGE_API_URL` | yes      | Base URL of the API. Either the v1-rooted form (`https://api.openai.com/v1`) or a bare host (`https://cc.example.com`) works — `/v1` is auto-appended when missing. |
 | `IMAGE_API_KEY` | yes      | Bearer token for the API.                                                         |
 | `IMAGE_MODEL`   | no       | Model name. Defaults to `gpt-image-2`.                                            |
 | `TEXT_MODEL`    | no       | Chat model for "AI 构思" prompt crafting. Defaults to `gpt-5.4`. Must be served at `{IMAGE_API_URL}/chat/completions` by the same key. |

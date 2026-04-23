@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { readQuota, setQuotaCookies, FREE_LIMIT } from "@/lib/quota";
+import { readQuota, setQuotaCookies, FREE_LIMIT, apiBase } from "@/lib/quota";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -16,11 +16,10 @@ type GenerateBody = {
 };
 
 export async function POST(req: Request) {
-  const apiUrl = process.env.IMAGE_API_URL;
   const apiKey = process.env.IMAGE_API_KEY;
   const model = process.env.IMAGE_MODEL ?? "gpt-image-2";
 
-  if (!apiUrl || !apiKey) {
+  if (!apiBase() || !apiKey) {
     return NextResponse.json(
       { error: "服务器未配置 IMAGE_API_URL 或 IMAGE_API_KEY" },
       { status: 500 },
@@ -53,7 +52,7 @@ export async function POST(req: Request) {
   }
 
   const effectiveN = Math.min(requestedN, quota.remaining);
-  const endpoint = apiUrl.replace(/\/+$/, "") + "/images/generations";
+  const endpoint = `${apiBase()}/images/generations`;
 
   const payload: Record<string, unknown> = {
     model,

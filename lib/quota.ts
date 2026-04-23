@@ -1,6 +1,17 @@
 import { NextResponse } from "next/server";
 
 export const FREE_LIMIT = Number(process.env.FREE_LIMIT ?? 5);
+
+// Normalize the provider base URL so both forms work:
+//   https://example.com           -> https://example.com/v1
+//   https://example.com/v1        -> https://example.com/v1
+//   https://example.com/v1/       -> https://example.com/v1
+//   https://example.com/api/v1    -> https://example.com/api/v1
+export function apiBase(): string {
+  const raw = (process.env.IMAGE_API_URL ?? "").trim().replace(/\/+$/, "");
+  if (!raw) return "";
+  return /\/v\d+(?:\/|$)/.test(raw + "/") ? raw : `${raw}/v1`;
+}
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 const USED_COOKIE = "gi2_used";
 const GRANT_COOKIE = "gi2_grant";
