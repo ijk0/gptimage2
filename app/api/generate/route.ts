@@ -65,65 +65,19 @@ async function handlePost(req: Request) {
   const effectiveN = Math.min(requestedN, quota.remaining);
   const endpoint = `${apiBase()}/images/generations`;
 
-  const payload: Record<string, unknown> = {
+  const basePayload: Record<string, unknown> = {
     model,
     prompt,
-    n: effectiveN,
+    n: 1,
     size: body.size ?? "auto",
   };
-  if (body.quality) payload.quality = body.quality;
-  if (body.background) payload.background = body.background;
-  if (body.output_format) payload.output_format = body.output_format;
+  if (body.quality) basePayload.quality = body.quality;
+  if (body.background) basePayload.background = body.background;
+  if (body.output_format) basePayload.output_format = body.output_format;
   if (typeof body.output_compression === "number") {
-    payload.output_compression = body.output_compression;
+    basePayload.output_compression = body.output_compression;
   }
-  if (body.moderation) payload.moderation = body.moderation;
-
-  let upstream: Response;
-  try {
-    upstream = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify(payload),
-    });
-  } catch (err) {
-    return NextResponse.json(
-      { error: `上游请求失败：${(err as Error).message}` },
-      { status: 502 },
-    );
-  }
-
-  let text: string;
-  try {
-    text = await upstream.text();
-  } catch (err) {
-    return NextResponse.json(
-      { error: `读取上游响应失败：${(err as Error).message}` },
-      { status: 502 },
-    );
-  }
-  let data: unknown;
-  try {
-    data = JSON.parse(text);
-  } catch {
-    return NextResponse.json(
-      {
-        error: `上游返回了非 JSON 响应（HTTP ${upstream.status}）`,
-        raw: text.slice(0, 500),
-      },
-      { status: 502 },
-    );
-  }
-
-  if (!upstream.ok) {
-    return NextResponse.json(
-      { error: "上游接口报错", status: upstream.status, details: data },
-      { status: upstream.status },
-    );
-  }
+  if (body.moderation) basePayload.moderation = body.moderation;
 
   const format = (body.output_format ?? "png").toLowerCase();
   const mime =
@@ -133,20 +87,77 @@ async function handlePost(req: Request) {
         ? "image/webp"
         : "image/png";
 
-  const rawItems =
-    (data as { data?: Array<{ url?: string; b64_json?: string }> }).data ?? [];
-  const images = rawItems
-    .map((item) => {
-      if (item.b64_json) return `data:${mime};base64,${item.b64_json}`;
-      if (item.url) return item.url;
-      return null;
-    })
-    .filter((x): x is string => Boolean(x));
+  // Fan out N parallel requests with n=1 each. The configured upstream model
+  // does not reliably honor n>1 in a single call (often returns just one
+  // image), so we issue independent requests and aggregate the results.
+  type CallResult =
+    | { ok: true; image: string }
+    | { ok: false; status: number; details: unknown };
+
+  async function callOnce(): Promise<CallResult> {
+    let upstream: Response;
+    try {
+      upstream = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify(basePayload),
+      });
+    } catch (err) {
+      return { ok: false, status: 502, details: (err as Error).message };
+    }
+
+    let text: string;
+    try {
+      text = await upstream.text();
+    } catch (err) {
+      return { ok: false, status: 502, details: (err as Error).message };
+    }
+
+    let data: unknown;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      return {
+        ok: false,
+        status: upstream.status,
+        details: `非 JSON 响应：${text.slice(0, 200)}`,
+      };
+    }
+
+    if (!upstream.ok) {
+      return { ok: false, status: upstream.status, details: data };
+    }
+
+    const item =
+      (data as { data?: Array<{ url?: string; b64_json?: string }> }).data?.[0];
+    if (item?.b64_json) {
+      return { ok: true, image: `data:${mime};base64,${item.b64_json}` };
+    }
+    if (item?.url) {
+      return { ok: true, image: item.url };
+    }
+    return { ok: false, status: 502, details: "上游未返回图片" };
+  }
+
+  const results = await Promise.all(
+    Array.from({ length: effectiveN }, () => callOnce()),
+  );
+  const images = results.flatMap((r) => (r.ok ? [r.image] : []));
 
   if (images.length === 0) {
+    const firstErr = results.find((r) => !r.ok) as
+      | Extract<CallResult, { ok: false }>
+      | undefined;
     return NextResponse.json(
-      { error: "上游未返回任何图片", details: data },
-      { status: 502 },
+      {
+        error: "上游接口报错",
+        status: firstErr?.status ?? 502,
+        details: firstErr?.details ?? "未返回任何图片",
+      },
+      { status: firstErr?.status ?? 502 },
     );
   }
 

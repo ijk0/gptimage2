@@ -441,19 +441,28 @@ export default function Home() {
   const [museError, setMuseError] = useState<string | null>(null);
 
   const promptRef = useRef<HTMLTextAreaElement>(null);
+  const gallerySectionRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     setStamp(todayStamp());
-    fetch("/api/generate")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d: Quota | null) => {
-        if (d) setQuota(d);
-      })
-      .catch(() => {});
-    fetch("/api/recharge")
-      .then((r) => r.json())
-      .then((d: { enabled: boolean }) => setRechargeEnabled(!!d.enabled))
-      .catch(() => {});
+    (async () => {
+      try {
+        const r = await fetch("/api/generate");
+        if (r.ok) {
+          const d = (await safeJson(r)) as unknown as Quota;
+          setQuota(d);
+        }
+      } catch {
+        /* bootstrap failure is silent; UI falls back to default quota */
+      }
+      try {
+        const r = await fetch("/api/recharge");
+        const d = (await safeJson(r)) as { enabled?: boolean };
+        setRechargeEnabled(!!d.enabled);
+      } catch {
+        /* recharge feature simply stays hidden on bootstrap failure */
+      }
+    })();
   }, []);
 
   async function onMuse() {
@@ -535,6 +544,12 @@ export default function Home() {
     if (disabled) return;
     setStatus("loading");
     setError(null);
+    requestAnimationFrame(() => {
+      gallerySectionRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
     try {
       const res = await fetch("/api/generate", {
         method: "POST",
@@ -905,7 +920,11 @@ export default function Home() {
           )}
       </div>
 
-      <section className="sec gallery-sec" aria-live="polite">
+      <section
+        ref={gallerySectionRef}
+        className="sec gallery-sec"
+        aria-live="polite"
+      >
         <div className="sec-head">
           <span className="sec-title">版面</span>
           <span className="gallery-meta">
