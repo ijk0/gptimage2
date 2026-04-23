@@ -12,7 +12,15 @@ type Mode = "generate" | "edit";
 // (Midjourney, Ideogram, Canva Magic Media, Recraft, Adobe Firefly Boards,
 // 即梦, 妙鸭, 美图WHEE, 稿定, 堆友, 文心一格). Each item carries an optional
 // suggested size that auto-fills the size picker on selection.
-type PresetItem = { label: string; text: string; size?: string };
+type PresetItem = {
+  label: string;
+  text: string;
+  size?: string;
+  // Presets where the prompt only makes sense with a user-supplied source
+  // image (e.g. "restore this old photo", "turn my pet into a gentleman").
+  // Selecting one of these auto-routes to edit mode.
+  needsImage?: boolean;
+};
 
 const PRESETS: { group: string; items: PresetItem[] }[] = [
   {
@@ -35,8 +43,9 @@ const PRESETS: { group: string; items: PresetItem[] }[] = [
       },
       {
         label: "二次元动漫头像",
-        text: "二次元动漫头像，清新少女，蓝紫渐变瞳色，长发随风飘扬，樱花树下仰望天空，日系插画质感",
+        text: "把这张照片转成二次元动漫头像，保留人物五官与发型轮廓，蓝紫渐变瞳色，日系插画质感，樱花柔光背景",
         size: "1024x1024",
+        needsImage: true,
       },
       {
         label: "情侣双人写真",
@@ -45,7 +54,8 @@ const PRESETS: { group: string; items: PresetItem[] }[] = [
       },
       {
         label: "旧照翻新",
-        text: "一张 1960 年代家庭老照片的数字化修复版，保留原有颗粒与暖色偏，人物面部轮廓清晰、衣料纹理可辨",
+        text: "对这张老照片做数字化修复：去除划痕折痕、提升清晰度、还原自然肤色与衣料纹理，保留原有颗粒与年代感的暖色偏",
+        needsImage: true,
       },
     ],
   },
@@ -159,23 +169,27 @@ const PRESETS: { group: string; items: PresetItem[] }[] = [
       },
       {
         label: "拟人插画",
-        text: "宠物拟人插画，一只柴犬穿着英伦风西装打领结，绅士姿态站立，水彩手绘质感，米色背景",
+        text: "把这只宠物画成拟人插画：穿英伦风西装打领结，绅士姿态站立，水彩手绘质感，米色背景，保留原毛色与五官特征",
         size: "1024x1536",
+        needsImage: true,
       },
       {
         label: "节日造型",
-        text: "宠物圣诞主题造型，一只金毛戴着红色圣诞帽与格纹围巾，坐在装饰圣诞树前，暖色灯光氛围",
+        text: "为这只宠物加上圣诞主题造型：戴红色圣诞帽与格纹围巾，坐在装饰圣诞树前，暖色灯光氛围，保持原毛色与神态",
         size: "1024x1024",
+        needsImage: true,
       },
       {
         label: "萌宠表情包",
-        text: "萌宠表情包风格图，一只柯基抬头卖萌的近景，夸张卡通化表情，纯色背景，适合做聊天表情",
+        text: "把这只宠物做成表情包：夸张卡通化表情、纯色背景、近景特写，保留原毛色与五官，适合做聊天表情",
         size: "1024x1024",
+        needsImage: true,
       },
       {
         label: "宠物纪念图",
-        text: "宠物纪念图，一只老狗和主人温馨对视的暖调剪影，淡金色自然光，轻微胶片颗粒",
+        text: "把这只宠物做成温馨纪念图：暖调剪影，与主人对视，淡金色自然光，轻微胶片颗粒，保留原品种特征",
         size: "1024x1536",
+        needsImage: true,
       },
     ],
   },
@@ -460,6 +474,8 @@ export default function Home() {
   const [inputFidelity, setInputFidelity] = useState(true);
   const [dragOver, setDragOver] = useState(false);
   const editFileInputRef = useRef<HTMLInputElement>(null);
+  const dropZoneRef = useRef<HTMLDivElement>(null);
+  const [dropZoneFlash, setDropZoneFlash] = useState(false);
 
   const [quota, setQuota] = useState<Quota>({
     limit: 5,
@@ -536,6 +552,31 @@ export default function Home() {
     });
     setError(null);
     setStatus("idle");
+  }
+
+  function applyPreset(label: string) {
+    const hit = PRESETS.flatMap((g) => g.items).find((t) => t.label === label);
+    if (!hit) return;
+    const goEdit = hit.needsImage || mode === "edit";
+    if (goEdit) {
+      if (mode !== "edit") setMode("edit");
+      setEditInstruction(hit.text);
+      if (hit.size) setSize(hit.size);
+      // Nudge attention toward the upload zone if no image is loaded yet.
+      if (!editFile) {
+        requestAnimationFrame(() => {
+          dropZoneRef.current?.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+          });
+        });
+        setDropZoneFlash(true);
+        window.setTimeout(() => setDropZoneFlash(false), 1400);
+      }
+    } else {
+      setIntent(hit.text);
+      if (hit.size) setSize(hit.size);
+    }
   }
 
   async function onMuse() {
@@ -778,13 +819,7 @@ export default function Home() {
                       onChange={(e) => {
                         const label = e.target.value;
                         if (!label) return;
-                        const hit = PRESETS.flatMap((g) => g.items).find(
-                          (t) => t.label === label,
-                        );
-                        if (hit) {
-                          setIntent(hit.text);
-                          if (hit.size) setSize(hit.size);
-                        }
+                        applyPreset(label);
                         e.target.value = "";
                       }}
                     >
@@ -794,11 +829,15 @@ export default function Home() {
                           {group.items.map((t) => (
                             <option key={t.label} value={t.label}>
                               {t.label}
+                              {t.needsImage ? " · 需原图" : ""}
                             </option>
                           ))}
                         </optgroup>
                       ))}
                     </select>
+                    <span className="tpl-hint">
+                      标有「需原图」的题材会自动切到编辑模式，请上传一张作为底图。
+                    </span>
                   </div>
                 </div>
 
@@ -899,7 +938,8 @@ export default function Home() {
               <div className="intent-col">
                 <span className="micro-label">原图 · Source image</span>
                 <div
-                  className={`drop-zone${editPreview ? " has-image" : ""}${dragOver ? " is-drag" : ""}`}
+                  ref={dropZoneRef}
+                  className={`drop-zone${editPreview ? " has-image" : ""}${dragOver ? " is-drag" : ""}${dropZoneFlash ? " is-flash" : ""}`}
                   onClick={() => {
                     if (!editPreview) editFileInputRef.current?.click();
                   }}
@@ -998,6 +1038,35 @@ export default function Home() {
                     </span>
                   </span>
                 </label>
+
+                <div className="tpl-field">
+                  <span className="micro-label">题材模板 · Recipe</span>
+                  <select
+                    className="tpl-select"
+                    value=""
+                    onChange={(e) => {
+                      const label = e.target.value;
+                      if (!label) return;
+                      applyPreset(label);
+                      e.target.value = "";
+                    }}
+                  >
+                    <option value="">— 选一个题材作为改写方向 —</option>
+                    {PRESETS.map((group) => (
+                      <optgroup key={group.group} label={group.group}>
+                        {group.items.map((t) => (
+                          <option key={t.label} value={t.label}>
+                            {t.label}
+                            {t.needsImage ? " · 需原图" : ""}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                  <span className="tpl-hint">
+                    选择后将填入下方编辑指令；可在指令框继续微调。
+                  </span>
+                </div>
               </div>
 
               <div className="prompt-col">
@@ -1266,9 +1335,10 @@ export default function Home() {
       </section>
 
       <footer className="colophon">
-        <span>
-          印于 Vercel · Set in Source Serif 4, Noto Serif SC &amp; Archivo
-        </span>
+        <span>Set in Source Serif 4, Noto Serif SC &amp; Archivo</span>
+        <a className="colophon-mail" href="mailto:chatgptplus@outlook.com">
+          来信 · chatgptplus@outlook.com
+        </a>
         <span className="colophon-seal">朱砂 · No. {quota.used}</span>
       </footer>
     </main>

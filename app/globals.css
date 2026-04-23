@@ -378,6 +378,14 @@ a {
   background: var(--paper-sunken);
 }
 
+.tpl-hint {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  color: var(--ink-subtle);
+  line-height: 1.5;
+  letter-spacing: 0.01em;
+}
+
 /* Style chips */
 .styles {
   display: grid;
@@ -1045,12 +1053,34 @@ a {
   padding-top: var(--space-lg);
   border-top: 1px solid var(--rule);
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-md);
   font-family: var(--font-mono);
   font-size: 10px;
   letter-spacing: 0.8px;
   text-transform: uppercase;
   color: var(--ink-subtle);
+}
+
+.colophon-mail {
+  color: var(--ink-muted);
+  text-decoration: none;
+  border-bottom: 1px dotted var(--rule-strong);
+  padding-bottom: 1px;
+  text-transform: none;
+  letter-spacing: 0.4px;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.colophon-mail:hover,
+.colophon-mail:focus-visible {
+  color: var(--cinnabar);
+  border-bottom-color: var(--cinnabar);
+  outline: none;
 }
 
 .colophon-seal {
@@ -1142,6 +1172,21 @@ a {
 .drop-zone.is-drag {
   border-color: var(--cinnabar);
   background: color-mix(in oklch, var(--cinnabar) 6%, var(--paper));
+}
+
+.drop-zone.is-flash:not(.has-image) {
+  animation: drop-zone-flash 1.2s var(--ease-out) 1;
+}
+
+@keyframes drop-zone-flash {
+  0% {
+    border-color: var(--cinnabar);
+    background: color-mix(in oklch, var(--cinnabar) 10%, var(--paper));
+  }
+  100% {
+    border-color: var(--rule-strong);
+    background: var(--paper-sunken);
+  }
 }
 
 .drop-zone.has-image {
