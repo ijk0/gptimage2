@@ -16,6 +16,17 @@ type GenerateBody = {
 };
 
 export async function POST(req: Request) {
+  try {
+    return await handlePost(req);
+  } catch (err) {
+    return NextResponse.json(
+      { error: `服务器内部错误：${(err as Error).message}` },
+      { status: 500 },
+    );
+  }
+}
+
+async function handlePost(req: Request) {
   const apiKey = process.env.IMAGE_API_KEY;
   const model = process.env.IMAGE_MODEL ?? "gpt-image-2";
 
@@ -85,7 +96,15 @@ export async function POST(req: Request) {
     );
   }
 
-  const text = await upstream.text();
+  let text: string;
+  try {
+    text = await upstream.text();
+  } catch (err) {
+    return NextResponse.json(
+      { error: `读取上游响应失败：${(err as Error).message}` },
+      { status: 502 },
+    );
+  }
   let data: unknown;
   try {
     data = JSON.parse(text);

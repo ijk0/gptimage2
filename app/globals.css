@@ -492,9 +492,9 @@ a {
 }
 
 .prompt-area {
-  flex: 1;
   width: 100%;
-  min-height: 180px;
+  min-height: 260px;
+  resize: vertical;
   padding: var(--space-md);
   background: var(--paper-sunken);
   border: 1px solid var(--rule);

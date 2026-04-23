@@ -61,6 +61,19 @@ function systemFor(style?: string): string {
 }
 
 export async function POST(req: Request) {
+  try {
+    return await handlePost(req);
+  } catch (err) {
+    // Safety net: anything we failed to anticipate still comes back
+    // as JSON, not as the Next.js HTML 500 page.
+    return NextResponse.json(
+      { error: `服务器内部错误：${(err as Error).message}` },
+      { status: 500 },
+    );
+  }
+}
+
+async function handlePost(req: Request) {
   const apiKey = process.env.IMAGE_API_KEY;
   const model = process.env.TEXT_MODEL ?? "gpt-5.4";
 
@@ -117,7 +130,15 @@ export async function POST(req: Request) {
     );
   }
 
-  const text = await upstream.text();
+  let text: string;
+  try {
+    text = await upstream.text();
+  } catch (err) {
+    return NextResponse.json(
+      { error: `读取上游响应失败：${(err as Error).message}` },
+      { status: 502 },
+    );
+  }
   let data: unknown;
   try {
     data = JSON.parse(text);

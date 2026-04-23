@@ -385,6 +385,21 @@ function toRoman(num: number): string {
   return out;
 }
 
+// Tolerant JSON parser for fetch responses. If the server (or a proxy /
+// dev-server error page in between) returned HTML instead of JSON, surface a
+// clean Chinese error rather than the raw "Unexpected token '<'" exception.
+async function safeJson(res: Response): Promise<Record<string, unknown>> {
+  const raw = await res.text();
+  try {
+    return JSON.parse(raw) as Record<string, unknown>;
+  } catch {
+    const snippet = raw.trim().slice(0, 80).replace(/\s+/g, " ");
+    throw new Error(
+      `服务器返回了非 JSON 响应（HTTP ${res.status}）。请稍后重试。片段：${snippet}…`,
+    );
+  }
+}
+
 function todayStamp(): string {
   const d = new Date();
   const yy = String(d.getFullYear()).slice(-2);
@@ -451,20 +466,22 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ intent: intent.trim(), style }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) {
         const detail =
           typeof data?.details === "string"
-            ? data.details
+            ? (data.details as string)
             : data?.details
               ? JSON.stringify(data.details)
               : "";
         throw new Error(
-          data?.error ? `${data.error}${detail ? `：${detail}` : ""}` : "生成失败",
+          data?.error
+            ? `${data.error as string}${detail ? `：${detail}` : ""}`
+            : "生成失败",
         );
       }
       if (typeof data.prompt === "string" && data.prompt.trim()) {
-        setPrompt(data.prompt.trim());
+        setPrompt((data.prompt as string).trim());
         setPromptOrigin("muse");
         setPromptFresh(true);
         window.setTimeout(() => setPromptFresh(false), 1400);
@@ -488,16 +505,16 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code: rechargeCode.trim() }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error ?? "兑换失败");
+      const data = await safeJson(res);
+      if (!res.ok) throw new Error((data?.error as string) ?? "兑换失败");
       setQuota({
-        limit: data.limit,
-        used: data.used,
-        remaining: data.remaining,
-        grant: data.grant,
+        limit: data.limit as number,
+        used: data.used as number,
+        remaining: data.remaining as number,
+        grant: data.grant as number,
       });
       setRechargeState("ok");
-      setRechargeMsg(`兑换成功，次数 +${data.added}`);
+      setRechargeMsg(`兑换成功，次数 +${data.added as number}`);
       setRechargeCode("");
       if (error) setError(null);
     } catch (err) {
@@ -530,31 +547,33 @@ export default function Home() {
           output_format: format,
         }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) {
         if (res.status === 429 && typeof data?.limit === "number") {
           setQuota({
-            limit: data.limit,
-            used: data.used ?? data.limit,
+            limit: data.limit as number,
+            used: (data.used as number | undefined) ?? (data.limit as number),
             remaining: 0,
           });
         }
         const detail =
           typeof data?.details === "string"
-            ? data.details
+            ? (data.details as string)
             : data?.details
               ? JSON.stringify(data.details)
               : "";
         throw new Error(
-          data?.error ? `${data.error}${detail ? `：${detail}` : ""}` : "请求失败",
+          data?.error
+            ? `${data.error as string}${detail ? `:${detail}` : ""}`
+            : "请求失败",
         );
       }
-      setImages(data.images ?? []);
+      setImages((data.images as string[]) ?? []);
       if (typeof data.limit === "number") {
         setQuota({
-          limit: data.limit,
-          used: data.used,
-          remaining: data.remaining,
+          limit: data.limit as number,
+          used: data.used as number,
+          remaining: data.remaining as number,
         });
       }
       setStatus("idle");
