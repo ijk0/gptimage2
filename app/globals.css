@@ -303,7 +303,7 @@ a {
   }
 }
 
-@media (max-width: 520px) {
+@media (max-width: 640px) {
   .recharge-popover {
     position: fixed;
     top: auto;
@@ -744,7 +744,7 @@ a {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
-@media (max-width: 520px) {
+@media (max-width: 640px) {
   .params-strip {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -780,7 +780,7 @@ a {
   }
 }
 
-@media (max-width: 520px) {
+@media (max-width: 640px) {
   .param-inline:nth-child(2n) {
     border-right: none;
   }
@@ -2038,4 +2038,205 @@ a {
   font-size: 11px;
   color: var(--ink-subtle);
   letter-spacing: 0.3px;
+}
+
+/* ============================================================
+ * Mobile (≤640px)
+ * Masthead becomes seal+title / meta two-row stack so the
+ * dual-language wordmark stops wrapping mid-phrase. Plate
+ * overlay drops hover-gating on touch. Inputs hit 16px+ to
+ * suppress iOS focus-zoom.
+ * ============================================================ */
+
+@media (max-width: 640px) {
+  .shell {
+    padding: var(--space-lg) var(--space-md) var(--space-3xl);
+  }
+
+  .masthead {
+    grid-template-columns: auto 1fr;
+    grid-template-areas:
+      "seal title"
+      "meta meta";
+    align-items: center;
+    column-gap: var(--space-md);
+    row-gap: var(--space-md);
+    padding-bottom: var(--space-md);
+    margin-bottom: var(--space-xl);
+  }
+  .seal {
+    grid-area: seal;
+    width: 44px;
+    height: 44px;
+    font-size: 22px;
+  }
+  .mast-title {
+    grid-area: title;
+    min-width: 0;
+  }
+  .mast-title h1 {
+    font-size: 20px;
+    line-height: 1.2;
+  }
+  .mast-sub {
+    font-size: 11px;
+    letter-spacing: 0.3px;
+  }
+  .mast-meta {
+    grid-area: meta;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: var(--space-md);
+    row-gap: var(--space-xs);
+    text-align: left;
+    padding-top: var(--space-sm);
+    border-top: 1px dotted var(--rule);
+    font-size: 10px;
+  }
+  .mast-meta > span:first-child {
+    flex: 0 1 auto;
+  }
+  .mast-quota {
+    flex: 0 1 auto;
+    margin-left: auto;
+    gap: 8px;
+  }
+  .mast-redeem {
+    padding: 3px 10px;
+    font-size: 11px;
+  }
+  .mast-auth {
+    flex: 1 1 100%;
+    justify-content: flex-start;
+  }
+
+  .mode-tabs {
+    margin-bottom: var(--space-lg);
+  }
+  .mode-tab {
+    padding: 10px 12px;
+    gap: 2px;
+  }
+  .mode-tab-label {
+    font-size: 14px;
+  }
+  .mode-tab-hint {
+    font-size: 9px;
+    letter-spacing: 0.6px;
+  }
+
+  .sec + .sec {
+    margin-top: var(--space-xl);
+  }
+  .sec-title {
+    font-size: 18px;
+  }
+  .sec-no {
+    font-size: 10px;
+  }
+
+  /* iOS won't auto-zoom an input ≥16px font-size on focus */
+  .intent-input {
+    min-height: 120px;
+    font-size: 16px;
+    line-height: 1.65;
+    padding: var(--space-sm) var(--space-md);
+  }
+  .prompt-area {
+    min-height: 200px;
+    font-size: 16px;
+    padding: var(--space-sm) var(--space-md);
+  }
+  .recharge-input {
+    font-size: 16px;
+  }
+
+  .workbench {
+    gap: var(--space-lg);
+  }
+  .intent-col,
+  .prompt-col {
+    gap: var(--space-sm);
+  }
+
+  .commit-row {
+    margin-top: var(--space-lg);
+  }
+  .param-inline {
+    padding: 8px 12px;
+  }
+  .param-select {
+    font-size: 14px;
+  }
+  .param-hint {
+    font-size: 10px;
+  }
+  .press {
+    padding: 14px 18px;
+    font-size: 13px;
+    min-width: 0;
+    letter-spacing: 0.5px;
+  }
+
+  .drop-zone {
+    min-height: 180px;
+    padding: var(--space-md);
+  }
+  .drop-icon {
+    font-size: 28px;
+  }
+  .drop-title {
+    font-size: 14px;
+    text-align: center;
+  }
+  .drop-preview {
+    max-height: 220px;
+  }
+
+  .gallery-sec {
+    margin-top: var(--space-xl);
+  }
+  .plates {
+    gap: var(--space-lg);
+  }
+
+  /* Reveal plate actions persistently on touch — hover never fires */
+  .plate-overlay {
+    opacity: 1;
+    padding: var(--space-xs);
+    gap: 6px;
+    flex-wrap: wrap;
+    background: linear-gradient(
+      to top,
+      color-mix(in oklch, black 65%, transparent) 0%,
+      transparent 55%
+    );
+  }
+  .plate-download,
+  .plate-refine {
+    padding: 7px 10px;
+    font-size: 10px;
+    letter-spacing: 0.6px;
+  }
+  .plate:hover .plate-frame img {
+    transform: none;
+  }
+
+  .colophon {
+    margin-top: var(--space-3xl);
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+}
+
+/* Touch devices that aren't mobile-narrow still need persistent overlay */
+@media (hover: none) {
+  .plate-overlay {
+    opacity: 1;
+  }
+  .plate:hover .plate-frame img {
+    transform: none;
+  }
 }
