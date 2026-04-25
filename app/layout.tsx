@@ -190,8 +190,16 @@ export default function RootLayout({
     mono.variable,
   ].join(" ");
 
+  // Runs before first paint: mirror the saved theme onto <html data-theme>
+  // so light-dark() resolves with the user's pick instead of flashing the
+  // system default. No-op when nothing is stored — system preference wins.
+  const themeBoot = `(function(){try{var t=localStorage.getItem('pf-theme');if(t==='light'||t==='dark'){document.documentElement.setAttribute('data-theme',t);}}catch(e){}})();`;
+
   return (
     <html lang="zh-CN" className={fontClasses}>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeBoot }} />
+      </head>
       <body>
         {children}
         <script

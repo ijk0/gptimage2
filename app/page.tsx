@@ -669,6 +669,36 @@ export default function Home() {
   const [username, setUsername] = useState<string | null>(null);
   const [authBusy, setAuthBusy] = useState(false);
 
+  // Resolved theme actually shown right now (light or dark). Initialized to
+  // null on the server; hydrated on the client from <html data-theme> (set
+  // by the pre-paint script in layout.tsx) or from system preference.
+  const [theme, setTheme] = useState<"light" | "dark" | null>(null);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const stored = root.getAttribute("data-theme");
+    if (stored === "light" || stored === "dark") {
+      setTheme(stored);
+      return;
+    }
+    const prefersDark =
+      typeof window !== "undefined" &&
+      window.matchMedia &&
+      window.matchMedia("(prefers-color-scheme: dark)").matches;
+    setTheme(prefersDark ? "dark" : "light");
+  }, []);
+
+  function toggleTheme() {
+    const next: "light" | "dark" = theme === "dark" ? "light" : "dark";
+    setTheme(next);
+    document.documentElement.setAttribute("data-theme", next);
+    try {
+      localStorage.setItem("pf-theme", next);
+    } catch {
+      /* localStorage may be unavailable (private mode) — DOM update still applies */
+    }
+  }
+
   const [museState, setMuseState] = useState<MuseState>("idle");
   const [museError, setMuseError] = useState<string | null>(null);
   // Short explanation shown when MUSE auto-upgrades size/quality based on
@@ -1198,6 +1228,20 @@ export default function Home() {
               )}
             </span>
           ) : null}
+          <button
+            type="button"
+            className="mast-theme"
+            onClick={toggleTheme}
+            aria-label={theme === "dark" ? "切换到浅色主题" : "切换到深色主题"}
+            title={theme === "dark" ? "切换到浅色主题" : "切换到深色主题"}
+          >
+            <span className="mast-theme__glyph" aria-hidden>
+              {theme === "dark" ? "☀" : "☾"}
+            </span>
+            <span className="mast-theme__label">
+              {theme === "dark" ? "明 · Light" : "暗 · Dark"}
+            </span>
+          </button>
         </div>
       </header>
 

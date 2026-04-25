@@ -10,6 +10,9 @@
 }
 
 :root {
+  /* Default: follow system. The explicit theme toggle overrides this by
+     setting color-scheme to a single value via [data-theme] below, which
+     also flips every light-dark() call beneath. */
   color-scheme: light dark;
 
   --font-serif:
@@ -20,20 +23,20 @@
     "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
   --font-mono: var(--font-mono), "SF Mono", Menlo, monospace;
 
-  /* Light — cream paper */
-  --paper: oklch(0.968 0.012 78);
-  --paper-raised: oklch(0.94 0.012 78);
-  --paper-sunken: oklch(0.98 0.006 78);
-  --ink: oklch(0.23 0.025 52);
-  --ink-muted: oklch(0.48 0.02 56);
-  --ink-subtle: oklch(0.62 0.018 60);
-  --rule: oklch(0.82 0.014 78);
-  --rule-strong: oklch(0.7 0.02 68);
-  --cinnabar: oklch(0.54 0.19 32);
-  --cinnabar-soft: oklch(0.62 0.14 32);
-  --cinnabar-ink: oklch(0.98 0.01 80);
-  --danger: oklch(0.48 0.18 25);
-  --danger-bg: oklch(0.95 0.02 30);
+  /* Light — cream paper · Dark — proofing blanket */
+  --paper: light-dark(oklch(0.968 0.012 78), oklch(0.2 0.012 68));
+  --paper-raised: light-dark(oklch(0.94 0.012 78), oklch(0.24 0.013 68));
+  --paper-sunken: light-dark(oklch(0.98 0.006 78), oklch(0.17 0.012 68));
+  --ink: light-dark(oklch(0.23 0.025 52), oklch(0.94 0.014 82));
+  --ink-muted: light-dark(oklch(0.48 0.02 56), oklch(0.72 0.018 80));
+  --ink-subtle: light-dark(oklch(0.62 0.018 60), oklch(0.55 0.02 72));
+  --rule: light-dark(oklch(0.82 0.014 78), oklch(0.33 0.012 68));
+  --rule-strong: light-dark(oklch(0.7 0.02 68), oklch(0.45 0.015 68));
+  --cinnabar: light-dark(oklch(0.54 0.19 32), oklch(0.7 0.17 32));
+  --cinnabar-soft: light-dark(oklch(0.62 0.14 32), oklch(0.74 0.13 32));
+  --cinnabar-ink: light-dark(oklch(0.98 0.01 80), oklch(0.15 0.01 68));
+  --danger: light-dark(oklch(0.48 0.18 25), oklch(0.72 0.18 25));
+  --danger-bg: light-dark(oklch(0.95 0.02 30), oklch(0.24 0.03 28));
 
   --space-2xs: 4px;
   --space-xs: 8px;
@@ -48,23 +51,12 @@
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    /* Dark — proofing blanket */
-    --paper: oklch(0.2 0.012 68);
-    --paper-raised: oklch(0.24 0.013 68);
-    --paper-sunken: oklch(0.17 0.012 68);
-    --ink: oklch(0.94 0.014 82);
-    --ink-muted: oklch(0.72 0.018 80);
-    --ink-subtle: oklch(0.55 0.02 72);
-    --rule: oklch(0.33 0.012 68);
-    --rule-strong: oklch(0.45 0.015 68);
-    --cinnabar: oklch(0.7 0.17 32);
-    --cinnabar-soft: oklch(0.74 0.13 32);
-    --cinnabar-ink: oklch(0.15 0.01 68);
-    --danger: oklch(0.72 0.18 25);
-    --danger-bg: oklch(0.24 0.03 28);
-  }
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
 }
 
 html,
@@ -349,6 +341,35 @@ a {
 .mast-auth__btn:disabled {
   cursor: not-allowed;
   opacity: 0.6;
+}
+
+.mast-theme {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border: 1px solid var(--ink-muted);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.mast-theme:hover {
+  color: var(--cinnabar);
+  border-color: var(--cinnabar);
+}
+
+.mast-theme__glyph {
+  font-size: 12px;
+  line-height: 1;
 }
 
 /* ========== Section header ========== */
@@ -2107,8 +2128,20 @@ a {
     font-size: 11px;
   }
   .mast-auth {
-    flex: 1 1 100%;
+    flex: 1 1 auto;
     justify-content: flex-start;
+    min-width: 0;
+  }
+  .mast-theme {
+    margin-left: auto;
+    padding: 3px 8px;
+    font-size: 10px;
+  }
+  .mast-theme__label {
+    display: none;
+  }
+  .mast-theme__glyph {
+    font-size: 13px;
   }
 
   .mode-tabs {
