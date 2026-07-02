@@ -24,62 +24,70 @@ function setAnonIdCookie(res: NextResponse, id: string): void {
 }
 
 export async function POST(req: Request) {
-  if (!isConfigured()) {
-    return NextResponse.json(
-      { error: "兑换功能未开启。管理员需配置 Upstash Redis 与兑换码。" },
-      { status: 501 },
-    );
-  }
-
-  let body: { code?: string };
   try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "请求体不是合法的 JSON" }, { status: 400 });
-  }
-
-  const code = body.code?.trim();
-  if (!code) {
-    return NextResponse.json({ error: "请输入兑换码" }, { status: 400 });
-  }
-
-  const username = await readSession(req);
-  let anonId: string | null = null;
-  let issuedAnonId = false;
-  let identity: string;
-  if (username) {
-    identity = `user:${username}`;
-  } else {
-    anonId = readAnonId(req);
-    if (!anonId) {
-      anonId = randomBytes(16).toString("hex");
-      issuedAnonId = true;
+    if (!isConfigured()) {
+      return NextResponse.json(
+        { error: "兑换功能未开启。管理员需配置 Upstash Redis 与兑换码。" },
+        { status: 501 },
+      );
     }
-    identity = `aid:${anonId}`;
-  }
 
-  const result = await consumeCode(code, identity);
-  if (!result.ok) {
-    const message =
-      result.reason === "already_redeemed_by_user"
-        ? "该兑换码你已使用过"
-        : "兑换码无效或已被兑换";
-    const res = NextResponse.json({ error: message }, { status: 400 });
+    let body: { code?: string };
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ error: "请求体不是合法的 JSON" }, { status: 400 });
+    }
+
+    const code = body.code?.trim();
+    if (!code) {
+      return NextResponse.json({ error: "请输入兑换码" }, { status: 400 });
+    }
+
+    const username = await readSession(req);
+    let anonId: string | null = null;
+    let issuedAnonId = false;
+    let identity: string;
+    if (username) {
+      identity = `user:${username}`;
+    } else {
+      anonId = readAnonId(req);
+      if (!anonId) {
+        anonId = randomBytes(16).toString("hex");
+        issuedAnonId = true;
+      }
+      identity = `aid:${anonId}`;
+    }
+
+    const result = await consumeCode(code, identity);
+    if (!result.ok) {
+      const message =
+        result.reason === "already_redeemed_by_user"
+          ? "该兑换码你已使用过"
+          : "兑换码无效或已被兑换";
+      const res = NextResponse.json({ error: message }, { status: 400 });
+      if (issuedAnonId && anonId) setAnonIdCookie(res, anonId);
+      return res;
+    }
+
+    const update = await addGrant(req, result.amount);
+    const res = NextResponse.json({
+      added: result.amount,
+      limit: update.quota.limit,
+      used: update.quota.used,
+      grant: update.quota.grant,
+      remaining: update.quota.remaining,
+    });
+    update.applyCookies(res);
     if (issuedAnonId && anonId) setAnonIdCookie(res, anonId);
     return res;
+  } catch (err) {
+    console.error("recharge failed:", err);
+    return NextResponse.json(
+      { error: "服务暂时不可用，请稍后重试" },
+      { status: 500 },
+    );
   }
-
-  const update = await addGrant(req, result.amount);
-  const res = NextResponse.json({
-    added: result.amount,
-    limit: update.quota.limit,
-    used: update.quota.used,
-    grant: update.quota.grant,
-    remaining: update.quota.remaining,
-  });
-  update.applyCookies(res);
-  if (issuedAnonId && anonId) setAnonIdCookie(res, anonId);
-  return res;
 }
 
 export async function GET() {
